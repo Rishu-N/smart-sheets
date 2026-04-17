@@ -1,0 +1,1656 @@
+/* ─── CSS Variables ──────────────────────────────────────── */
+:root {
+    --bg-primary: #1e1e2e;
+    --bg-secondary: #2a2a3e;
+    --bg-tertiary: #353550;
+    --text-primary: #e0e0f0;
+    --text-secondary: #a0a0c0;
+    --accent: #6c8cff;
+    --accent-hover: #8aa4ff;
+    --border: #3a3a54;
+    --success: #4caf50;
+    --error: #ef5350;
+    --warning: #ffb74d;
+}
+
+/* ─── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* ─── App Container ──────────────────────────────────────── */
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* ─── Toolbar ────────────────────────────────────────────── */
+#toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    min-height: 42px;
+}
+
+#toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#app-title {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+}
+
+#sheet-selector {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+#toolbar button {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+#toolbar button:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+/* ─── Formula Bar ────────────────────────────────────────── */
+#formula-bar {
+    display: flex;
+    align-items: center;
+    padding: 4px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+    min-height: 34px;
+}
+
+#cell-ref {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-secondary);
+    min-width: 50px;
+    text-align: center;
+    padding: 3px 8px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    border: 1px solid var(--border);
+}
+
+#formula-input {
+    flex: 1;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    outline: none;
+}
+
+#formula-input:focus {
+    border-color: var(--accent);
+}
+
+/* ─── Status Bar ─────────────────────────────────────────── */
+#status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 12px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-secondary);
+    min-height: 26px;
+}
+
+/* ─── Auth Screens ───────────────────────────────────────── */
+#auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: var(--bg-primary);
+}
+
+.auth-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    width: 420px;
+    max-width: 90vw;
+    text-align: center;
+}
+
+.auth-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.auth-subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 28px;
+    line-height: 1.5;
+}
+
+.auth-field {
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.auth-field label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.auth-field input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.auth-field input:focus {
+    border-color: var(--accent);
+}
+
+.auth-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 11px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 12px;
+}
+
+.auth-btn:hover {
+    background: var(--accent-hover);
+}
+
+.auth-error {
+    color: var(--error);
+    font-size: 13px;
+    min-height: 20px;
+    margin-bottom: 8px;
+}
+
+.auth-link {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.auth-link:hover {
+    color: var(--text-primary);
+}
+
+/* OTP digit inputs */
+.otp-inputs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.otp-digit {
+    width: 48px;
+    height: 56px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.otp-digit:focus {
+    border-color: var(--accent);
+}
+
+#otp-countdown {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ─── Handsontable Theme Overrides ───────────────────────── */
+.handsontable {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.handsontable th,
+.handsontable td {
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+}
+
+.handsontable th {
+    background: var(--bg-secondary) !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600;
+}
+
+.handsontable .ht__highlight,
+.handsontable td.area {
+    background: rgba(108, 140, 255, 0.15) !important;
+}
+
+.handsontable td.current {
+    outline: 2px solid var(--accent) !important;
+}
+
+.handsontable .htDimmed {
+    color: var(--text-secondary) !important;
+}
+
+.handsontable .changeType {
+    background: var(--bg-secondary) !important;
+}
+
+.handsontable .htContextMenu {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
+.handsontable .htContextMenu td {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.handsontable .htContextMenu td:hover,
+.handsontable .htContextMenu td.current {
+    background: var(--accent) !important;
+    color: #fff !important;
+}
+
+/* Scrollbar styling */
+.handsontable ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.handsontable ::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+.handsontable ::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+.handsontable ::-webkit-scrollbar-thumb:hover {
+    background: var(--border);
+}
+
+/* ─── Presence Bar ──────────────────────────────────────── */
+#presence-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 8px;
+}
+
+.presence-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: default;
+    user-select: none;
+}
+
+/* ─── Cell Lock Overlay ─────────────────────────────────── */
+.cell-locked {
+    position: relative;
+}
+
+.cell-locked::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+}
+
+/* ─── Toast Notifications ───────────────────────────────── */
+.toast {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 10000;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    width: 320px;
+    overflow: hidden;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.toast-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.toast-close:hover {
+    color: var(--text-primary);
+}
+
+.toast-body {
+    padding: 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.toast-otp .otp-code {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 6px;
+    text-align: center;
+    margin: 10px 0;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+}
+
+.toast-otp .otp-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ─── Connection Status ─────────────────────────────────── */
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.status-dot.connected {
+    background: var(--success);
+}
+
+.status-dot.disconnected {
+    background: var(--error);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* ─── AI Panel ──────────────────────────────────────────── */
+.ai-panel {
+    position: fixed;
+    top: 0;
+    right: -380px;
+    width: 380px;
+    height: 100vh;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 5000;
+    transition: right 0.25s ease;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.ai-panel.open {
+    right: 0;
+}
+
+.ai-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.ai-panel-tabs {
+    display: flex;
+    gap: 2px;
+}
+
+.ai-tab {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.ai-tab:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.ai-tab.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.ai-panel-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.ai-panel-close:hover {
+    color: var(--text-primary);
+}
+
+.ai-panel-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+}
+
+/* Each mode fills the body and scrolls independently */
+.ai-mode {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+/* Q&A mode: chat grows, input stays at bottom */
+#ai-mode-qa {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 12px 12px 8px;
+}
+
+/* Q&A Chat */
+.ai-chat {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.ai-msg {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.ai-msg-user {
+    background: var(--accent);
+    color: #fff;
+    margin-left: 30px;
+    border-bottom-right-radius: 2px;
+}
+
+.ai-msg-assistant {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    margin-right: 30px;
+    border-bottom-left-radius: 2px;
+}
+
+.ai-input-area {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+}
+
+.ai-input-area textarea {
+    flex: 1;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+}
+
+.ai-input-area textarea:focus {
+    border-color: var(--accent);
+}
+
+.ai-action-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.ai-action-btn:hover {
+    background: var(--accent-hover);
+}
+
+/* Mode description */
+.ai-mode-desc {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+/* Fields */
+.ai-field {
+    margin-bottom: 10px;
+}
+
+.ai-field label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.ai-field select, .ai-text-input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 13px;
+    outline: none;
+}
+
+.ai-field select:focus, .ai-text-input:focus {
+    border-color: var(--accent);
+}
+
+.ai-textarea {
+    width: 100%;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 10px;
+}
+
+.ai-textarea:focus {
+    border-color: var(--accent);
+}
+
+/* Preview */
+.ai-preview {
+    margin-top: 12px;
+}
+
+.ai-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+.ai-preview-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+}
+
+.ai-preview-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid rgba(58, 58, 84, 0.5);
+    color: var(--text-primary);
+}
+
+.ai-row-new td {
+    background: rgba(76, 175, 80, 0.12);
+}
+
+.ai-row-changed td {
+    background: rgba(108, 140, 255, 0.1);
+}
+
+.ai-old-val {
+    color: var(--text-secondary);
+    text-decoration: line-through;
+}
+
+.ai-new-val {
+    color: var(--success);
+    font-weight: 600;
+}
+
+/* Formula result */
+.ai-formula-result {
+    margin-top: 8px;
+}
+
+.ai-formula-box {
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.ai-formula-box label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.ai-formula-code {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+}
+
+.ai-formula-explanation {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* Confirm bar */
+.ai-confirm-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.ai-confirm-action {
+    flex: 1;
+    background: var(--success);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ai-confirm-action:hover {
+    opacity: 0.9;
+}
+
+.ai-cancel-action {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.ai-cancel-action:hover {
+    color: var(--text-primary);
+}
+
+/* Loading / Error / Hint */
+.ai-loading {
+    color: var(--accent);
+    font-size: 12px;
+    font-style: italic;
+}
+
+.ai-error {
+    color: var(--error);
+    font-size: 12px;
+}
+
+.ai-hint {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+#ai-toggle-btn {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: none !important;
+    font-weight: 600;
+}
+
+/* ─── Find & Replace Bar ────────────────────────────────── */
+.find-bar {
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+}
+
+.find-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.find-row:last-child {
+    margin-bottom: 0;
+}
+
+.find-field {
+    flex: 1;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 13px;
+    outline: none;
+}
+
+.find-field:focus {
+    border-color: var(--accent);
+}
+
+.find-btn {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.find-btn:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.find-close-btn {
+    font-size: 16px;
+    padding: 3px 8px;
+}
+
+.find-count {
+    font-size: 12px;
+    color: var(--text-secondary);
+    min-width: 60px;
+    text-align: center;
+}
+
+/* ─── Sheet Tabs ────────────────────────────────────────── */
+.sheet-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 12px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    min-height: 30px;
+}
+
+.sheet-tab {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding: 4px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    margin-right: -1px;
+}
+
+.sheet-tab:hover {
+    color: var(--text-primary);
+    background: var(--bg-primary);
+}
+
+.sheet-tab.active {
+    background: var(--bg-primary);
+    color: var(--accent);
+    font-weight: 600;
+    border-bottom-color: var(--bg-primary);
+}
+
+.sheet-tab-add {
+    font-size: 16px;
+    font-weight: 700;
+    padding: 2px 12px;
+    color: var(--text-secondary);
+}
+
+.sheet-tab-add:hover {
+    color: var(--accent);
+}
+
+/* ─── Formatting Toolbar ────────────────────────────────── */
+.fmt-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+}
+
+.fmt-btn {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 13px;
+    cursor: pointer;
+    min-width: 28px;
+    text-align: center;
+}
+
+.fmt-btn:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.fmt-color {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+}
+
+/* ─── Mini Toast (bottom-right notifications) ───────────── */
+#toast-container {
+    position: fixed;
+    bottom: 40px;
+    right: 16px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+}
+
+.mini-toast {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.2s ease;
+    transition: opacity 0.3s;
+}
+
+.mini-toast.fade-out {
+    opacity: 0;
+}
+
+.mini-toast-info {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.mini-toast-success {
+    background: rgba(76, 175, 80, 0.9);
+    color: #fff;
+}
+
+.mini-toast-error {
+    background: rgba(239, 83, 80, 0.9);
+    color: #fff;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* ─── Loading Overlay ───────────────────────────────────── */
+#loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(30, 30, 46, 0.7);
+    color: var(--text-primary);
+    font-size: 16px;
+    align-items: center;
+    justify-content: center;
+    z-index: 20000;
+}
+
+/* ─── Light Theme ────────────────────────────────────────── */
+[data-theme="light"] {
+    --bg-primary: #f5f5f7;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e8e8ed;
+    --text-primary: #1c1c1e;
+    --text-secondary: #6e6e73;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --border: #d1d1d6;
+    --success: #16a34a;
+    --error: #dc2626;
+    --warning: #d97706;
+}
+
+[data-theme="light"] .handsontable th,
+[data-theme="light"] .handsontable td {
+    background: #ffffff !important;
+    color: #1c1c1e !important;
+    border-color: #d1d1d6 !important;
+}
+
+[data-theme="light"] .handsontable th {
+    background: #f5f5f7 !important;
+    color: #6e6e73 !important;
+}
+
+[data-theme="light"] #loading-overlay {
+    background: rgba(245, 245, 247, 0.8);
+}
+
+/* ─── Toolbar Groups & Dividers ─────────────────────────── */
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    margin: 0 4px;
+}
+
+.icon-btn {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 4px !important;
+    padding: 5px 8px !important;
+    font-size: 15px !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+    width: 30px !important;
+    text-align: center !important;
+}
+
+.icon-btn:hover {
+    background: var(--accent) !important;
+    color: #fff !important;
+}
+
+/* Presence bar inside toolbar-group */
+#presence-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 0;
+    min-width: 0;
+}
+
+/* ─── Cell-ref as editable input ────────────────────────── */
+#cell-ref {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 60px;
+    text-align: center;
+    padding: 3px 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    outline: none;
+    cursor: text;
+}
+
+#cell-ref:focus {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+#formula-bar-sep {
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-style: italic;
+    padding: 0 2px;
+    user-select: none;
+}
+
+/* ─── Grid Wrapper (flex row: search panel + grid) ───────── */
+#grid-wrapper {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    position: relative;
+}
+
+#spreadsheet {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    /* Contain Handsontable's z-index overlays so sibling buttons stay visible */
+    isolation: isolate;
+}
+
+/* ─── Add Row Button ─────────────────────────────────────── */
+.add-row-btn {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px dashed var(--border);
+    border-radius: 0;
+    padding: 4px 16px;
+    font-size: 12px;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: all 0.15s;
+}
+
+.add-row-btn:hover {
+    background: rgba(108, 140, 255, 0.08);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ─── Column + button in header ─────────────────────────── */
+.col-add-btn {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 2;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+}
+
+.col-add-btn:hover {
+    opacity: 1;
+}
+
+/* ─── Right-side Add Column button ──────────────────────── */
+.add-col-right-btn {
+    width: 32px;
+    min-width: 32px;
+    flex-shrink: 0;
+    align-self: stretch;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: none;
+    border-left: 2px dashed var(--border);
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 700;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+    z-index: 20;
+}
+
+.add-col-right-btn:hover {
+    background: rgba(108, 140, 255, 0.15);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ─── Column / Row Alias Header Styles ───────────────────── */
+.col-alias-letter {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.row-alias-num {
+    font-size: 9px;
+    color: var(--text-secondary);
+}
+
+.alias-input-overlay {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    outline: none;
+    min-height: 28px;
+}
+
+/* ─── Search Match Highlight ─────────────────────────────── */
+.search-match {
+    background: rgba(255, 204, 0, 0.25) !important;
+    outline: 1px solid rgba(255, 204, 0, 0.6) !important;
+}
+
+/* ─── Search Panel ───────────────────────────────────────── */
+.search-panel {
+    width: 240px;
+    min-width: 240px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.search-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.search-input {
+    width: 100%;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    font-size: 13px;
+    outline: none;
+}
+
+.search-input:focus {
+    border-bottom-color: var(--accent);
+    background: var(--bg-secondary);
+}
+
+.search-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.search-options label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.search-options input[type="checkbox"] {
+    accent-color: var(--accent);
+}
+
+#search-replace-row {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border);
+}
+
+.search-replace-btns {
+    display: flex;
+    gap: 4px;
+    padding: 4px 10px 8px;
+}
+
+.search-replace-btns button {
+    flex: 1;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.search-replace-btns button:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.search-count {
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    min-height: 24px;
+}
+
+.search-results {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(58, 58, 84, 0.4);
+    transition: background 0.1s;
+}
+
+.search-result-item:hover, .search-result-item.active {
+    background: rgba(108, 140, 255, 0.12);
+}
+
+.search-result-loc {
+    display: block;
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.search-result-val {
+    display: block;
+    font-size: 12px;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ─── Modals ─────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 15000;
+    backdrop-filter: blur(2px);
+}
+
+.modal-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 480px;
+    max-width: 95vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.modal-wide {
+    width: 560px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.modal-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.modal-loading {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 20px;
+}
+
+.modal-error {
+    color: var(--error);
+    text-align: center;
+    padding: 10px;
+}
+
+/* Share modal */
+.share-url-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+
+.share-url-row code {
+    flex: 1;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 14px;
+    color: var(--accent);
+    word-break: break-all;
+}
+
+.share-qr {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.share-qr img,
+.share-qr svg {
+    max-width: 220px;
+    width: 200px;
+    height: 200px;
+    border-radius: 8px;
+    background: white;
+    padding: 8px;
+}
+
+.share-hint {
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+}
+
+/* Settings modal */
+.settings-section {
+    margin-bottom: 20px;
+}
+
+.settings-section h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+.settings-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.settings-label small {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+
+.settings-checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.settings-checkbox input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+}
+
+.settings-input {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    outline: none;
+    width: 100%;
+}
+
+.settings-input:focus {
+    border-color: var(--accent);
+}
+
+/* Shared button styles */
+.btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-secondary:hover {
+    background: var(--bg-primary);
+}
+
+/* ─── AI Edit Mode ───────────────────────────────────────── */
+.ai-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-edit-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-secondary);
+    user-select: none;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    transition: all 0.15s;
+}
+
+.ai-edit-toggle:has(input:checked) {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(108, 140, 255, 0.1);
+}
+
+.ai-edit-toggle input {
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.ai-edit-banner {
+    background: rgba(108, 140, 255, 0.12);
+    border: 1px solid rgba(108, 140, 255, 0.3);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 12px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    text-align: center;
+}
