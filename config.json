@@ -1,0 +1,15 @@
+{
+  "openai_api_key": "",
+  "port": 8000,
+  "data_dir": "./data",
+  "open_browser": true,
+  "otp_expiry_seconds": 300,
+  "otp_max_attempts": 3,
+  "otp_lockout_seconds": 120,
+  "desktop_notifications": true,
+  "undo_depth": 50,
+  "ai_model": "gpt-4.1",
+  "max_context_rows": 200,
+  "base_url": "",
+  "require_guest_auth": false
+}

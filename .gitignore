@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Environment / secrets — never commit API keys
+.env
+backend/.env
+
+# User data — exclude personal sheets but keep the starter sample
+data/*.csv
+!data/sample.csv
+data/*.meta.json
+data/.backups/
+
+# Temp / backup files
+*.bak
+*.tmp
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*~
