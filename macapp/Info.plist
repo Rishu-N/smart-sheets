@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Reading Tracker</string>
+    <key>CFBundleDisplayName</key>
+    <string>Reading Tracker</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.readingtracker</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+    <!--
+      The app spawns python3 with cwd=projectRoot, which on most setups lands in
+      ~/Desktop / ~/Documents / ~/Downloads. macOS blocks reads of those folders
+      until the user grants permission; without these usage strings the prompt
+      never fires and the python child hangs inside getcwd().
+    -->
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>Reading Tracker needs to access the project folder so it can spawn the local server.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Reading Tracker needs to access the project folder so it can spawn the local server.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>Reading Tracker needs to access the project folder so it can spawn the local server.</string>
+</dict>
+</plist>
