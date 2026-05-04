@@ -36,6 +36,12 @@ from backend.sheet_manager import (
 from backend.undo_manager import init_undo_manager
 from backend.watcher import start_watcher, stop_watcher
 from backend.ai_engine import init_ai_engine, get_ai_engine
+from backend.reading import (
+    READING_SHEET_NAME,
+    ensure_reading_sheet,
+    fetch_word_count,
+    find_matches,
+)
 
 logger = logging.getLogger("smartsheet")
 
@@ -128,6 +134,16 @@ class SettingsPatchBody(BaseModel):
     otp_expiry_seconds: Optional[int] = Field(None, ge=30, le=3600)
     require_guest_auth: Optional[bool] = None
 
+class ReadingLogBody(BaseModel):
+    title: str = Field(..., min_length=1, max_length=500, description="Article title")
+    url: str = Field("", max_length=2000, description="Article URL")
+    word_count: int = Field(..., ge=0, description="Total words in the article")
+    time_seconds: int = Field(..., ge=0, description="Elapsed reading time in seconds")
+    wpm: float = Field(..., ge=0, description="Words per minute (computed client-side)")
+
+class ReadingWordCountBody(BaseModel):
+    url: str = Field(..., min_length=1, max_length=2000, description="URL to fetch and word-count")
+
 
 # ─── OpenAPI Tags ─────────────────────────────────────────────
 
@@ -139,6 +155,7 @@ _TAGS_METADATA = [
     {"name": "share", "description": "Share info — LAN URL and QR code"},
     {"name": "settings", "description": "Live settings — read and update config without restarting"},
     {"name": "realtime", "description": "WebSocket — real-time sync, cell locks, presence"},
+    {"name": "reading", "description": "Reading Log — log sessions, fetch word counts, dedupe checks"},
 ]
 
 
@@ -263,6 +280,9 @@ async def lifespan(app: FastAPI):
 
     # Ensure data directory exists
     config.data_dir.mkdir(parents=True, exist_ok=True)
+
+    # Bootstrap the Reading Log sheet (idempotent)
+    ensure_reading_sheet(config.data_dir)
 
     # Start file watcher — bridge sync thread to async event loop
     def on_csv_change(sheet_name: str):
@@ -855,6 +875,67 @@ async def api_ai_confirm(body: AIConfirmBody, request: Request):
     except Exception as e:
         logger.error(f"[AI] Confirm error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Reading Log Endpoints ─────────────────────────────────────────
+
+
+@app.post("/api/reading/log", tags=["reading"], summary="Append a reading session to the Reading Log sheet")
+async def api_reading_log(body: ReadingLogBody):
+    from datetime import datetime, timezone
+
+    config = get_config()
+    sheet = sm_read_sheet(config.data_dir, READING_SHEET_NAME)
+    headers = sheet["headers"]
+    new_row_idx = sheet["row_count"]
+
+    # Append a blank row, then patch each known column.
+    await sm_insert_rows(config.data_dir, READING_SHEET_NAME, new_row_idx, 1)
+
+    # Format: "04-May-2026 : 17:19:22" (DD-MMM-YYYY : HH:MM:SS, local time).
+    now_local = datetime.now(timezone.utc).astimezone()
+    formatted_date = now_local.strftime("%d-%b-%Y : %H:%M:%S")
+    values = {
+        "Title": body.title,
+        "URL": body.url,
+        "Word Count": str(body.word_count),
+        "Time (s)": str(body.time_seconds),
+        "WPM": f"{body.wpm:.2f}",
+        "Date": formatted_date,
+    }
+
+    for col_name, val in values.items():
+        if col_name in headers:
+            await sm_update_cell(
+                config.data_dir, READING_SHEET_NAME,
+                new_row_idx, headers.index(col_name), val,
+            )
+
+    await get_sync_manager().broadcast("sheet_reload", {"sheet": READING_SHEET_NAME})
+
+    return {"row": new_row_idx, "date": formatted_date}
+
+
+@app.get("/api/reading/check", tags=["reading"], summary="Check if an article was already logged")
+async def api_reading_check(query: str):
+    if not query or not query.strip():
+        raise HTTPException(status_code=400, detail="query is required")
+
+    config = get_config()
+    sheet = sm_read_sheet(config.data_dir, READING_SHEET_NAME)
+    matches = find_matches(sheet["rows"], sheet["headers"], query)
+    return {"found": len(matches) > 0, "matches": matches}
+
+
+@app.post("/api/reading/wordcount", tags=["reading"], summary="Fetch a URL and return its word count")
+async def api_reading_wordcount(body: ReadingWordCountBody):
+    try:
+        return await fetch_word_count(body.url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[READING] wordcount error: {e}")
+        raise HTTPException(status_code=502, detail=f"Could not fetch URL: {e}")
 
 
 # ─── Share Info ────────────────────────────────────────────────────
