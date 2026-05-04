@@ -133,25 +133,71 @@ final class ServerController: ObservableObject {
     }
 
     private static func resolvePython() throws -> String {
+        // Probe candidates in priority order. Framework installs (pip-managed) come
+        // first because /usr/bin/python3 is the bare Apple-stub that often lacks deps.
+        let candidates: [String] = [
+            // Python.org framework installer (most common for pip users on macOS)
+            "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3",
+            // Homebrew (Apple Silicon)
+            "/opt/homebrew/bin/python3",
+            "/opt/homebrew/bin/python3.11",
+            "/opt/homebrew/bin/python3.12",
+            // Homebrew (Intel)
+            "/usr/local/bin/python3",
+            // pyenv shim
+            (ProcessInfo.processInfo.environment["HOME"] ?? "") + "/.pyenv/shims/python3",
+            // System fallback last (usually missing fastapi/pandas/etc.)
+            "/usr/bin/python3",
+        ]
+
+        for candidate in candidates {
+            guard FileManager.default.isExecutableFile(atPath: candidate) else { continue }
+            if pythonHasFastapi(candidate) { return candidate }
+        }
+
+        // Last resort: ask user's login shell (may have PATH set in ~/.zshrc / ~/.bashrc)
+        if let shellPath = resolvePythonViaShell(), pythonHasFastapi(shellPath) {
+            return shellPath
+        }
+
+        throw NSError(
+            domain: "ReadingTracker",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey:
+                "Could not find a python3 with 'fastapi' installed. " +
+                "Set the Python path in Settings to the interpreter you use for pip installs."]
+        )
+    }
+
+    /// Returns true if `pythonPath` can `import fastapi` without error.
+    private static func pythonHasFastapi(_ pythonPath: String) -> Bool {
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        p.arguments = ["python3"]
+        p.executableURL = URL(fileURLWithPath: pythonPath)
+        p.arguments = ["-c", "import fastapi"]
+        p.standardOutput = Pipe()
+        p.standardError = Pipe()
+        do { try p.run() } catch { return false }
+        p.waitUntilExit()
+        return p.terminationStatus == 0
+    }
+
+    /// Falls back to resolving python3 through a login shell so ~/.zshrc PATH is honoured.
+    private static func resolvePythonViaShell() -> String? {
+        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: shell)
+        p.arguments = ["-lc", "which python3"]
         let pipe = Pipe()
         p.standardOutput = pipe
         p.standardError = Pipe()
-        try p.run()
+        do { try p.run() } catch { return nil }
         p.waitUntilExit()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let path = (String(data: data, encoding: .utf8) ?? "")
+        let out = (String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        if path.isEmpty {
-            throw NSError(
-                domain: "ReadingTracker",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "python3 not found in PATH"]
-            )
-        }
-        return path
+        return out.isEmpty ? nil : out
     }
 
     private static func logFileURL() -> URL {
