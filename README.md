@@ -9,14 +9,15 @@ A local-first, AI-powered spreadsheet that runs in your browser. Host it on your
 ### Grid & Data
 - **Spreadsheet grid** — Handsontable-powered grid with column sorting, resizable rows/columns, and a formula bar
 - **Server-side formulas** — `=SUM`, `=AVERAGE`, `=COUNT`, `=COUNTA`, `=MIN`, `=MAX`, `=IF`, `=CONCAT` evaluated on the backend; results broadcast to all clients
-- **Multiple sheets** — tab bar at the bottom; create new sheets with the `+` button; double-click a tab to rename it
+- **Multiple sheets** — tab bar at the bottom; create with `+`, double-click a tab to rename. **Right-click a tab** for full options: Rename, **🔒 Protect / 🔓 Unprotect**, **🗑️ Delete**.
+- **Sheet protection** — protected sheets show a 🔒 icon and cannot be deleted via the UI (HTTP 403). To remove a protected sheet, delete its `.csv` file from the `data/` folder directly. Protection state lives in `config.json` under `protected_sheets`.
 - **Add rows** — `+ Add Row` button below the grid appends a blank row; right-click context menu for insert above/below and delete
 - **Add columns** — `+` button on the last column header OR the persistent `+` strip on the right edge of the grid appends a column
 - **Export CSV** — one-click download of the current sheet
 
 ### Formatting
 - **Cell formatting** — bold (Ctrl+B), italic (Ctrl+I), background colour, text colour; persisted in `.meta.json` per sheet
-- **Custom column & row names** — double-click any column or row header to set a display alias shown as `"Revenue (A)"` / `"Q1 (1)"` — original letter/number stays visible inline; stored in `.meta.json`
+- **Custom column & row names** — **right-click** any column letter (A, B, C…) or row number (1, 2, 3…) → **✏️ Rename** → type the new name → press **Enter** or click **Save**. The header now shows `Revenue (A)` or `Q1 (1)` — your alias plus the original letter/number in brackets. Formulas (`=SUM(B2:B10)`) and `Ctrl+F` searches still use the underlying letters/numbers, so nothing breaks. Right-click → **✖ Clear name** removes the alias. Stored in `<sheet>.meta.json`.
 
 ### History
 - **Undo / Redo** — delta-based, 50-level history per sheet (Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z)
@@ -106,6 +107,7 @@ The app also reads `OPENAI_API_KEY` from a `.env` file in the project root or `b
 | `undo_depth` | `50` | Number of undo steps kept per sheet. |
 | `ai_model` | `"gpt-4.1"` | OpenAI model used for AI features. Supported: `gpt-4.1`, `gpt-4.1-mini`, `gpt-4o`, `gpt-4o-mini`. |
 | `max_context_rows` | `200` | Rows sent to the AI in full; larger sheets send summary stats instead. |
+| `protected_sheets` | `[]` | List of sheet names that are protected from UI deletion. Toggle via right-click → 🔒 Protect on the tab. To delete a protected sheet, remove its `.csv` from `data/` directly. |
 
 ---
 
@@ -124,10 +126,22 @@ The app also reads `OPENAI_API_KEY` from a `.env` file in the project root or `b
 
 ---
 
-## Sheets
+## Sheets — create, rename, protect, delete
 
 - Click the **`+`** tab at the bottom to create a new sheet.
 - **Double-click** a sheet tab to rename it.
+- **Right-click** a sheet tab for the full menu:
+
+  | Option | What it does |
+  |--------|--------------|
+  | ✏️ Rename | Same as double-click |
+  | 🔒 Protect / 🔓 Unprotect | Toggles a 🔒 indicator on the tab. Protected sheets cannot be deleted from the UI |
+  | 🗑️ Delete | Permanently removes the `.csv` and `.meta.json`. Asks for confirmation. Hidden on protected tabs. |
+
+- The last remaining sheet cannot be deleted (HTTP 400 guard).
+- Deleting the sheet you're currently viewing auto-switches to the first remaining tab.
+- All sheet operations broadcast over WebSocket — collaborators see the change instantly.
+- **To delete a protected sheet**, remove its `.csv` (and `.meta.json`) directly from the `data/` folder. The UI deliberately blocks this so a stray click can't take out a sheet you marked important.
 - Drop any `.csv` file into the `data/` folder — it appears as a new tab on reload.
 
 ---
@@ -142,7 +156,20 @@ The app also reads `OPENAI_API_KEY` from a `.env` file in the project root or `b
 
 ## Renaming Column and Row Headers
 
-Double-click any column or row header to type a custom display alias. The alias is shown inline alongside the original letter/number: `"Revenue (A)"` or `"Quarter (1)"`. Aliases are stored in `.meta.json` and do not rename the underlying CSV column.
+**Right-click any column letter (A, B, C…) or row number (1, 2, 3…)** → click **✏️ Rename column A** / **Rename row 1** → type your label → press **Enter** or click **Save**.
+
+The header then shows your alias with the original identifier in brackets:
+
+```
+Revenue (A)     Quantity (B)     Q1 Total (1)
+```
+
+The brackets matter — they keep the original letter/number visible so:
+- Formulas like `=SUM(B2:B10)` continue to work unchanged.
+- `Ctrl+F` and the cell-reference jump box still understand `B2`, `A1:C5`, etc.
+- The CSV columns are never renamed on disk.
+
+To remove an alias, right-click the same header again → **✖ Clear name**. Aliases live in `<sheet>.meta.json` next to cell formatting.
 
 ---
 
@@ -210,6 +237,8 @@ Full interactive Swagger docs are available at **`http://localhost:8000/docs`** 
 | POST | `/api/sheets/create` | Create a new empty sheet `{name, columns}` |
 | GET | `/api/sheet/:name` | Load sheet data (headers, rows, evaluated formulas) |
 | PATCH | `/api/sheet/:name/rename` | Rename sheet `{new_name}` |
+| DELETE | `/api/sheet/:name` | Delete a sheet (returns 403 if protected, 400 on the last remaining sheet) |
+| PATCH | `/api/sheet/:name/protect` | Toggle protection — protected sheets refuse `DELETE` |
 | GET | `/api/sheet/:name/export` | Download sheet as CSV |
 | POST | `/api/sheet/:name/columns` | Append columns `{count}` |
 

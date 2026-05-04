@@ -1184,5 +1184,19 @@ async def websocket_endpoint(websocket: WebSocket, session_token: str):
 
 # ─── Static File Serving (must be LAST) ────────────────────────────
 
+class NoCacheStaticFiles(StaticFiles):
+    """StaticFiles that forces revalidation so the browser never serves
+    stale JS/CSS after we ship a fix. Critical for a local-first dev app
+    where users typically don't think to hard-refresh."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        # `no-cache` means: cache, but always revalidate before reuse.
+        # Combined with the ETag StaticFiles already sets, browser gets
+        # 304 Not Modified when unchanged, fresh bytes when changed.
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return response
+
+
 _frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
-app.mount("/", StaticFiles(directory=str(_frontend_dir), html=True), name="frontend")
+app.mount("/", NoCacheStaticFiles(directory=str(_frontend_dir), html=True), name="frontend")

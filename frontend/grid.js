@@ -928,34 +928,46 @@ function buildRowHeader(row) {
 }
 
 // ─── Column / Row Header Right-Click Rename ─────────────────
+//
+// Handsontable's contextMenu plugin intercepts right-clicks in BUBBLE phase,
+// so we listen on `document` in CAPTURE phase to intercept first. We then
+// stopImmediatePropagation so HoT never sees the event when the click is
+// on a column/row header.
+let _headerCtxBound = false;
 
 function setupHeaderAliasEditing() {
-    if (!hot) return;
-    const container = hot.rootElement;
+    if (_headerCtxBound) return;
+    _headerCtxBound = true;
 
-    container.addEventListener('contextmenu', (e) => {
+    document.addEventListener('contextmenu', (e) => {
+        if (!hot) return;
+        // Only intercept clicks inside the grid
+        if (!hot.rootElement || !hot.rootElement.contains(e.target)) return;
+
         const th = e.target.closest('th');
         if (!th) return;
 
         const inThead = !!th.closest('thead');
-        const inTbody = !!th.closest('tbody');
 
         if (inThead) {
-            // Column header — cellIndex 0 is the corner/row-header cell
+            // Column header — cellIndex 0 is the corner; skip it.
             const col = th.cellIndex - 1;
-            if (col < 0) return; // corner cell — ignore
+            if (col < 0) return;
             e.preventDefault();
+            e.stopImmediatePropagation();
             showHeaderCtxMenu(e, 'col', col);
-        } else if (inTbody && th.classList.contains('rowHeader')) {
-            // Row header
+        } else if (th.tagName === 'TH') {
+            // Row header (any <th> outside thead). Try class first, fall back
+            // to "any non-thead th" since HoT's class names vary by version.
             const rowEl = th.closest('tr');
             if (!rowEl) return;
             const row = Array.from(rowEl.parentNode.children).indexOf(rowEl);
             if (row < 0) return;
             e.preventDefault();
+            e.stopImmediatePropagation();
             showHeaderCtxMenu(e, 'row', row);
         }
-    });
+    }, true /* capture phase — fires BEFORE Handsontable's bubble-phase listener */);
 }
 
 let _headerCtxMenu = null;
