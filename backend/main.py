@@ -22,6 +22,7 @@ from backend.sheet_manager import (
     add_column as sm_add_column,
     create_sheet as sm_create_sheet,
     delete_rows as sm_delete_rows,
+    delete_sheet as sm_delete_sheet,
     insert_rows as sm_insert_rows,
     list_sheets as sm_list_sheets,
     perform_redo as sm_redo,
@@ -481,7 +482,11 @@ async def auth_sessions(request: Request):
 @app.get("/api/sheets", tags=["sheets"], summary="List all sheets")
 async def api_list_sheets():
     config = get_config()
-    return sm_list_sheets(config.data_dir)
+    sheets = sm_list_sheets(config.data_dir)
+    protected = set(config.protected_sheets)
+    for s in sheets:
+        s["protected"] = s["name"] in protected
+    return sheets
 
 
 @app.post("/api/sheets/create", tags=["sheets"], summary="Create a new empty sheet")
@@ -1046,6 +1051,43 @@ async def api_rename_sheet(name: str, body: RenameSheetBody):
         raise HTTPException(status_code=404, detail=f"Sheet '{name}' not found")
     except FileExistsError:
         raise HTTPException(status_code=409, detail=f"Sheet '{new_name}' already exists")
+
+
+@app.delete("/api/sheet/{name}", tags=["sheets"], summary="Delete a sheet (forbidden for protected sheets)")
+async def api_delete_sheet(name: str):
+    config = get_config()
+    if name in config.protected_sheets:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Sheet '{name}' is protected and cannot be deleted through the UI. "
+                   "Remove the file directly from the data/ folder to delete it."
+        )
+    sheets = sm_list_sheets(config.data_dir)
+    if len(sheets) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the last remaining sheet.")
+    try:
+        result = sm_delete_sheet(config.data_dir, name)
+        sync_mgr = get_sync_manager()
+        await sync_mgr.broadcast("sheet_deleted", {"name": name})
+        return result
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Sheet '{name}' not found")
+
+
+@app.patch("/api/sheet/{name}/protect", tags=["sheets"], summary="Toggle sheet protection (prevent UI deletion)")
+async def api_protect_sheet(name: str):
+    config = get_config()
+    protected = list(config.protected_sheets)
+    if name in protected:
+        protected.remove(name)
+        now_protected = False
+    else:
+        protected.append(name)
+        now_protected = True
+    save_config({"protected_sheets": protected})
+    sync_mgr = get_sync_manager()
+    await sync_mgr.broadcast("sheet_protected", {"name": name, "protected": now_protected})
+    return {"name": name, "protected": now_protected}
 
 
 @app.patch("/api/sheet/{name}/alias", tags=["cells"], summary="Set a display alias for a column or row header")

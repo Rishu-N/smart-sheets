@@ -227,6 +227,18 @@ def add_column(data_dir: Path, sheet_name: str, count: int = 1) -> dict:
     return {"col_count": len(df.columns)}
 
 
+def delete_sheet(data_dir: Path, sheet_name: str) -> dict:
+    """Delete a sheet's CSV and its meta.json (if present)."""
+    csv_path = _csv_path(data_dir, sheet_name)
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Sheet not found: {sheet_name}")
+    csv_path.unlink()
+    meta = _meta_path(data_dir, sheet_name)
+    if meta.exists():
+        meta.unlink()
+    return {"deleted": sheet_name}
+
+
 def rename_sheet(data_dir: Path, old_name: str, new_name: str) -> dict:
     """Rename a sheet's CSV and meta.json files."""
     old_csv = _csv_path(data_dir, old_name)

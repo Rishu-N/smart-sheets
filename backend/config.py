@@ -36,6 +36,7 @@ class Config:
     max_context_rows: int
     base_url: str
     require_guest_auth: bool
+    protected_sheets: list
 
 
 _config: Config | None = None
@@ -83,6 +84,7 @@ def load_config(path: str = "config.json") -> Config:
         max_context_rows=raw.get("max_context_rows", 200),
         base_url=raw.get("base_url", ""),
         require_guest_auth=raw.get("require_guest_auth", False),
+        protected_sheets=raw.get("protected_sheets", []),
     )
     return _config
 

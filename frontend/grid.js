@@ -490,9 +490,11 @@ function handleWSMessage(event, data) {
         case 'user_join':      addUserToPresence(data); break;
         case 'user_leave':     removeUserFromPresence(data); break;
         case 'presence_list':  initPresence(data.users); break;
-        case 'sheet_reload':   loadSheet(data.sheet || currentSheet); break;
-        case 'sheet_renamed':  handleSheetRenamed(data); break;
-        case 'otp_request':    showHostOTPToast(data); break;
+        case 'sheet_reload':    loadSheet(data.sheet || currentSheet); break;
+        case 'sheet_renamed':   handleSheetRenamed(data); break;
+        case 'sheet_deleted':   handleSheetDeleted(data); break;
+        case 'sheet_protected': renderSheetTabs(); break;
+        case 'otp_request':     showHostOTPToast(data); break;
     }
 }
 
@@ -510,6 +512,19 @@ function handleSheetRenamed(data) {
     }
     renderSheetTabs();
     populateSheetSelector();
+}
+
+async function handleSheetDeleted(data) {
+    // If we're currently viewing the deleted sheet, switch to the first remaining one
+    if (currentSheet === data.name) {
+        const sheets = await fetchSheets();
+        if (sheets.length > 0) {
+            currentSheet = sheets[0].name;
+            await loadSheet(currentSheet);
+        }
+    }
+    await renderSheetTabs();
+    await populateSheetSelector();
 }
 
 // ─── Cell Locking ───────────────────────────────────────────
@@ -1028,15 +1043,99 @@ async function renderSheetTabs() {
     const sheets = await fetchSheets();
 
     tabs.innerHTML = sheets.map(s =>
-        `<button class="sheet-tab ${s.name === currentSheet ? 'active' : ''}" data-sheet="${escapeHtml(s.name)}">${escapeHtml(s.name)}</button>`
+        `<button class="sheet-tab ${s.name === currentSheet ? 'active' : ''} ${s.protected ? 'sheet-tab-protected' : ''}"
+            data-sheet="${escapeHtml(s.name)}"
+            data-protected="${s.protected ? '1' : '0'}"
+            title="${s.protected ? '🔒 Protected — right-click to unprotect' : 'Right-click for options'}">
+            ${s.protected ? '🔒 ' : ''}${escapeHtml(s.name)}
+        </button>`
     ).join('') + '<button class="sheet-tab sheet-tab-add" id="add-sheet-btn" title="New sheet">+</button>';
 
     tabs.querySelectorAll('.sheet-tab:not(.sheet-tab-add)').forEach(btn => {
         btn.addEventListener('click', () => loadSheet(btn.dataset.sheet));
         btn.addEventListener('dblclick', () => renameSheetPrompt(btn.dataset.sheet, btn));
+        btn.addEventListener('contextmenu', e => { e.preventDefault(); showTabContextMenu(e, btn); });
     });
 
     document.getElementById('add-sheet-btn').addEventListener('click', createNewSheet);
+}
+
+// ─── Sheet Tab Context Menu ──────────────────────────────────
+
+let _tabCtxMenu = null;
+
+function showTabContextMenu(e, btn) {
+    closeTabContextMenu();
+    const sheetName = btn.dataset.sheet;
+    const isProtected = btn.dataset.protected === '1';
+
+    const menu = document.createElement('div');
+    menu.className = 'tab-ctx-menu';
+    menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999`;
+
+    const items = [
+        { label: '✏️ Rename', action: () => renameSheetPrompt(sheetName, btn) },
+        { label: isProtected ? '🔓 Unprotect' : '🔒 Protect', action: () => toggleProtectSheet(sheetName) },
+        ...(!isProtected ? [{ label: '🗑️ Delete', action: () => deleteSheetPrompt(sheetName), danger: true }] : []),
+    ];
+
+    items.forEach(item => {
+        const el = document.createElement('button');
+        el.textContent = item.label;
+        el.className = 'tab-ctx-item' + (item.danger ? ' tab-ctx-danger' : '');
+        el.addEventListener('click', () => { closeTabContextMenu(); item.action(); });
+        menu.appendChild(el);
+    });
+
+    document.body.appendChild(menu);
+    _tabCtxMenu = menu;
+
+    // Close on next outside click
+    setTimeout(() => document.addEventListener('click', closeTabContextMenu, { once: true }), 0);
+}
+
+function closeTabContextMenu() {
+    if (_tabCtxMenu) { _tabCtxMenu.remove(); _tabCtxMenu = null; }
+}
+
+async function deleteSheetPrompt(sheetName) {
+    if (!confirm(`Delete sheet "${sheetName}"?\n\nThis cannot be undone.`)) return;
+    try {
+        await apiDeleteSheet(sheetName);
+        showSuccessToast(`Sheet "${sheetName}" deleted`);
+        // handleSheetDeleted arrives via WebSocket; also handle locally for robustness
+        if (currentSheet === sheetName) {
+            const sheets = await fetchSheets();
+            if (sheets.length > 0) { currentSheet = sheets[0].name; await loadSheet(currentSheet); }
+        }
+        await renderSheetTabs();
+        await populateSheetSelector();
+    } catch (err) {
+        showErrorToast(err.message);
+    }
+}
+
+async function toggleProtectSheet(sheetName) {
+    try {
+        const res = await apiProtectSheet(sheetName);
+        const msg = res.protected ? `🔒 "${sheetName}" is now protected` : `🔓 "${sheetName}" unprotected`;
+        showSuccessToast(msg);
+        await renderSheetTabs();
+    } catch (err) {
+        showErrorToast(err.message);
+    }
+}
+
+async function apiDeleteSheet(name) {
+    const res = await fetch(`/api/sheet/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Delete failed'); }
+    return res.json();
+}
+
+async function apiProtectSheet(name) {
+    const res = await fetch(`/api/sheet/${encodeURIComponent(name)}/protect`, { method: 'PATCH' });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Protect toggle failed'); }
+    return res.json();
 }
 
 async function renameSheetPrompt(sheetName, btnEl) {

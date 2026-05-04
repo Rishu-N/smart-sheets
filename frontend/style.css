@@ -941,6 +941,48 @@ html, body {
     color: var(--accent);
 }
 
+.sheet-tab-protected {
+    opacity: 0.85;
+    font-style: italic;
+}
+
+/* ─── Sheet Tab Context Menu ────────────────────────────── */
+.tab-ctx-menu {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    padding: 4px;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tab-ctx-item {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    text-align: left;
+    padding: 7px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.tab-ctx-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.tab-ctx-danger {
+    color: #e05252;
+}
+
+.tab-ctx-danger:hover {
+    background: rgba(224, 82, 82, 0.12);
+}
+
 /* ─── Formatting Toolbar ────────────────────────────────── */
 .fmt-group {
     display: flex;

@@ -11,5 +11,6 @@
   "ai_model": "gpt-4.1",
   "max_context_rows": 200,
   "base_url": "",
-  "require_guest_auth": false
+  "require_guest_auth": false,
+  "protected_sheets": []
 }
