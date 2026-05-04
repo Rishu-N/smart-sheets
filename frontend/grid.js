@@ -927,84 +927,150 @@ function buildRowHeader(row) {
     return String(num);
 }
 
-// Double-click on column header to edit alias
+// ─── Column / Row Header Right-Click Rename ─────────────────
+
 function setupHeaderAliasEditing() {
     if (!hot) return;
     const container = hot.rootElement;
 
-    container.addEventListener('dblclick', (e) => {
+    container.addEventListener('contextmenu', (e) => {
         const th = e.target.closest('th');
         if (!th) return;
 
-        // Determine if it's a column header or row header
-        const tableHead = th.closest('thead');
-        const tableBody = th.closest('tbody');
+        const inThead = !!th.closest('thead');
+        const inTbody = !!th.closest('tbody');
 
-        if (tableHead) {
-            // Column header
-            const col = th.cellIndex - 1; // -1 because first th is row header
-            if (col < 0) return;
-            const currentAlias = columnAliases[String(col)] || '';
-            showHeaderAliasInput(th, 'col', col, currentAlias);
-        } else if (tableBody) {
-            // Row header (first td in a row)
-            const isRowHeader = th.tagName === 'TH' && th.classList.contains('rowHeader');
-            if (!isRowHeader) return;
+        if (inThead) {
+            // Column header — cellIndex 0 is the corner/row-header cell
+            const col = th.cellIndex - 1;
+            if (col < 0) return; // corner cell — ignore
+            e.preventDefault();
+            showHeaderCtxMenu(e, 'col', col);
+        } else if (inTbody && th.classList.contains('rowHeader')) {
+            // Row header
             const rowEl = th.closest('tr');
             if (!rowEl) return;
-            const rows = Array.from(rowEl.parentNode.children);
-            const row = rows.indexOf(rowEl);
+            const row = Array.from(rowEl.parentNode.children).indexOf(rowEl);
             if (row < 0) return;
-            const currentAlias = rowAliases[String(row)] || '';
-            showHeaderAliasInput(th, 'row', row, currentAlias);
+            e.preventDefault();
+            showHeaderCtxMenu(e, 'row', row);
         }
     });
 }
 
-function showHeaderAliasInput(th, axis, index, currentAlias) {
-    // Remove any existing overlay
-    const existing = document.getElementById('alias-input-overlay');
-    if (existing) existing.remove();
+let _headerCtxMenu = null;
 
-    const rect = th.getBoundingClientRect();
+function showHeaderCtxMenu(e, axis, index) {
+    closeHeaderCtxMenu();
+    const label = axis === 'col' ? colToLetter(index) : String(index + 1);
+    const currentAlias = axis === 'col' ? (columnAliases[String(index)] || '') : (rowAliases[String(index)] || '');
+    const axisLabel = axis === 'col' ? `column ${label}` : `row ${label}`;
+
+    const menu = document.createElement('div');
+    menu.className = 'tab-ctx-menu';
+    menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999`;
+
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'tab-ctx-item';
+    renameBtn.textContent = `✏️ Rename ${axisLabel}`;
+    renameBtn.addEventListener('click', () => {
+        closeHeaderCtxMenu();
+        showHeaderRenamePopup(e.clientX, e.clientY, axis, index, currentAlias, label);
+    });
+    menu.appendChild(renameBtn);
+
+    if (currentAlias) {
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'tab-ctx-item tab-ctx-danger';
+        clearBtn.textContent = `✖ Clear name`;
+        clearBtn.addEventListener('click', async () => {
+            closeHeaderCtxMenu();
+            await commitAlias(axis, index, '');
+        });
+        menu.appendChild(clearBtn);
+    }
+
+    document.body.appendChild(menu);
+    _headerCtxMenu = menu;
+    setTimeout(() => document.addEventListener('click', closeHeaderCtxMenu, { once: true }), 0);
+}
+
+function closeHeaderCtxMenu() {
+    if (_headerCtxMenu) { _headerCtxMenu.remove(); _headerCtxMenu = null; }
+}
+
+function showHeaderRenamePopup(x, y, axis, index, currentAlias, label) {
+    // Remove any leftover popup
+    const old = document.getElementById('header-rename-popup');
+    if (old) old.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'header-rename-popup';
+    popup.className = 'header-rename-popup';
+    popup.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:9999`;
+
+    const axisLabel = axis === 'col' ? `Column ${label}` : `Row ${label}`;
+    popup.innerHTML = `<div class="hrp-title">Rename ${axisLabel}</div>`;
+
     const input = document.createElement('input');
-    input.id = 'alias-input-overlay';
     input.type = 'text';
     input.value = currentAlias;
-    input.placeholder = axis === 'col' ? 'Column name...' : 'Row label...';
-    input.className = 'alias-input-overlay';
-    input.style.position = 'fixed';
-    input.style.left = `${rect.left}px`;
-    input.style.top = `${rect.top}px`;
-    input.style.width = `${Math.max(rect.width, 100)}px`;
-    input.style.zIndex = '9999';
-    document.body.appendChild(input);
+    input.placeholder = `e.g. Revenue`;
+    input.className = 'hrp-input';
+    popup.appendChild(input);
+
+    const row = document.createElement('div');
+    row.className = 'hrp-btns';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Save';
+    saveBtn.className = 'hrp-save';
+    saveBtn.addEventListener('click', async () => {
+        popup.remove();
+        await commitAlias(axis, index, input.value.trim());
+    });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.className = 'hrp-cancel';
+    cancelBtn.addEventListener('click', () => popup.remove());
+
+    row.appendChild(saveBtn);
+    row.appendChild(cancelBtn);
+    popup.appendChild(row);
+    document.body.appendChild(popup);
+
     input.focus();
     input.select();
 
-    async function commit() {
-        const label = input.value.trim();
-        input.remove();
-        if (axis === 'col') {
-            columnAliases[String(index)] = label;
-            if (!label) delete columnAliases[String(index)];
-        } else {
-            rowAliases[String(index)] = label;
-            if (!label) delete rowAliases[String(index)];
-        }
-        await apiUpdateAlias(currentSheet, axis, index, label);
-        hot.updateSettings({
-            colHeaders: axis === 'col' ? (col) => buildColHeader(col) : undefined,
-            rowHeaders: axis === 'row' ? (row) => buildRowHeader(row) : undefined,
-        });
-        hot.render();
-    }
-
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); commit(); }
-        else if (e.key === 'Escape') { input.remove(); }
+    input.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); popup.remove(); await commitAlias(axis, index, input.value.trim()); }
+        else if (e.key === 'Escape') { popup.remove(); }
     });
-    input.addEventListener('blur', () => { setTimeout(() => { if (document.getElementById('alias-input-overlay')) commit(); }, 150); });
+
+    // Clamp so it stays on screen
+    requestAnimationFrame(() => {
+        const r = popup.getBoundingClientRect();
+        if (r.right > window.innerWidth) popup.style.left = `${window.innerWidth - r.width - 8}px`;
+        if (r.bottom > window.innerHeight) popup.style.top = `${window.innerHeight - r.height - 8}px`;
+    });
+}
+
+async function commitAlias(axis, index, label) {
+    if (axis === 'col') {
+        if (label) columnAliases[String(index)] = label;
+        else delete columnAliases[String(index)];
+    } else {
+        if (label) rowAliases[String(index)] = label;
+        else delete rowAliases[String(index)];
+    }
+    await apiUpdateAlias(currentSheet, axis, index, label);
+    // Always refresh BOTH headers to avoid layout reset
+    hot.updateSettings({
+        colHeaders: (col) => buildColHeader(col),
+        rowHeaders: (row) => buildRowHeader(row),
+    });
+    hot.render();
 }
 
 // ─── Add Row / Column Buttons ───────────────────────────────

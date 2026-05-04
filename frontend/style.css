@@ -983,6 +983,74 @@ html, body {
     background: rgba(224, 82, 82, 0.12);
 }
 
+/* ─── Header Rename Popup ───────────────────────────────── */
+.header-rename-popup {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+    padding: 14px 16px 12px;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hrp-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.hrp-input {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.hrp-input:focus {
+    border-color: var(--accent);
+}
+
+.hrp-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.hrp-save {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.hrp-save:hover { opacity: 0.88; }
+
+.hrp-cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.hrp-cancel:hover { color: var(--text-primary); }
+
 /* ─── Formatting Toolbar ────────────────────────────────── */
 .fmt-group {
     display: flex;
@@ -1288,17 +1356,6 @@ html, body {
 .row-alias-num {
     font-size: 9px;
     color: var(--text-secondary);
-}
-
-.alias-input-overlay {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 2px solid var(--accent);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 13px;
-    outline: none;
-    min-height: 28px;
 }
 
 /* ─── Search Match Highlight ─────────────────────────────── */
