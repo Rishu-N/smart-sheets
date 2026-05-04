@@ -269,13 +269,62 @@ smartsheet/
 │   ├── watcher.py          # Watchdog file watcher for external CSV edits
 │   ├── ai_engine.py        # OpenAI client, 5 AI modes (Q&A/fill/dump/formula/edit), backups
 │   └── notifier.py         # Terminal OTP print + desktop notification
-└── frontend/
-    ├── index.html          # App shell, auth screens, modals, search panel
-    ├── grid.js             # Grid, WebSocket client, all UI logic (theme, search, aliases…)
-    ├── auth.js             # Name/OTP auth screens; skips auth in open-LAN mode
-    ├── ai_panel.js         # AI sidebar with 5 mode tabs + edit mode, SSE stream reader
-    └── style.css           # Dark + light theme, all component styles
+├── frontend/
+│   ├── index.html          # App shell, auth screens, modals, search panel
+│   ├── grid.js             # Grid, WebSocket client, all UI logic (theme, search, aliases…)
+│   ├── auth.js             # Name/OTP auth screens; skips auth in open-LAN mode
+│   ├── ai_panel.js         # AI sidebar with 5 mode tabs + edit mode, SSE stream reader
+│   └── style.css           # Dark + light theme, all component styles
+└── macapp/                 # Optional macOS menu-bar companion (SwiftUI)
+    └── README.md           # `cd macapp && ./build.sh && open "build/Reading Tracker.app"`
 ```
+
+---
+
+## macOS menu-bar app (optional)
+
+A SwiftUI menu-bar companion lives in [`macapp/`](macapp/README.md). 📚 icon
+in the menu bar → click → popover with title / URL / word-count fields, a
+start-pause-stop-reset timer, and a Save button that appends a row to the
+`Reading Log` sheet (visible in the existing web UI).
+
+**What it does**
+
+- Auto-spawns `python3 app.py` on launch (or adopts an already-running
+  server). SIGTERMs the python child cleanly on quit.
+- **Inline read-status tag** next to the URL field: 🟢 green capsule if you
+  have already logged that URL, 🔴 red if it's new — debounced check
+  against `/api/reading/check`.
+- **Fetch** opens the URL in your browser AND scrapes the page for a word
+  count via `/api/reading/wordcount`. Three-rung User-Agent fallback so
+  Akamai-style WAFs that 403 browser UAs don't break the flow.
+- **Manual time entry** — separate Min/Sec fields default to `00`/`00`,
+  for when you forgot to start the timer.
+- **Reset** button on the timer; **🔁 Reload** in the footer for a clean
+  app restart.
+- **Notification on save without time** — saves the row anyway and posts a
+  macOS notification ("tap to open spreadsheet and add the time") with a
+  deep link to the web UI.
+- **Date format** in the saved row: `DD-MMM-YYYY : HH:MM:SS`
+  (e.g. `04-May-2026 : 17:36:42`).
+
+**Build and run** — any Mac with Xcode Command Line Tools:
+
+```bash
+cd macapp
+./build.sh
+open "build/Reading Tracker.app"
+```
+
+To make it appear in Spotlight / Launchpad, copy the bundle to
+`/Applications/` once after building:
+
+```bash
+cp -R "macapp/build/Reading Tracker.app" /Applications/
+```
+
+See [`macapp/README.md`](macapp/README.md) for the full feature list,
+prerequisites, distribution, icon customization, and troubleshooting.
 
 ---
 
