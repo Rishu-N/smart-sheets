@@ -1184,19 +1184,93 @@ async def websocket_endpoint(websocket: WebSocket, session_token: str):
 
 # ─── Static File Serving (must be LAST) ────────────────────────────
 
+import hashlib
+import subprocess
+
+
+_frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
+
+
+def _asset_hash(filename: str) -> str:
+    """SHA-1 (first 8 chars) of a frontend file. Used as a cache-busting
+    query string so the browser is forced to re-fetch (and re-parse the
+    ES module) whenever the file content changes. Re-computed per request
+    so edits-while-running show up immediately."""
+    p = _frontend_dir / filename
+    try:
+        return hashlib.sha1(p.read_bytes()).hexdigest()[:8]
+    except FileNotFoundError:
+        return "missing"
+
+
+def _git_short_commit() -> str:
+    """Return short commit SHA, or 'dev' if not in a git checkout."""
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(_frontend_dir.parent),
+            stderr=subprocess.DEVNULL,
+        )
+        return out.decode().strip()
+    except Exception:
+        return "dev"
+
+
+_FRONTEND_ASSETS = ["grid.js", "style.css", "ai_panel.js", "auth.js"]
+
+
+@app.get("/api/build-info", tags=["share"], summary="Frontend build hashes for stale-tab detection")
+async def api_build_info():
+    """Returns the current SHA-1 of every frontend asset plus the git
+    commit. The web UI polls this every 30 s to detect when a tab is
+    running stale code and prompt for a reload."""
+    return {
+        "commit": _git_short_commit(),
+        "asset_hashes": {name: _asset_hash(name) for name in _FRONTEND_ASSETS},
+    }
+
+
+def _serve_rewritten_index() -> "Response":
+    """Read index.html from disk and rewrite `<script src="/grid.js">` (etc.)
+    to `<script src="/grid.js?v=<sha>">`. Each unique content gets a unique
+    URL, which forces the browser to discard its parsed-module cache and
+    re-fetch on every change. HTTP `Cache-Control: no-cache` alone is NOT
+    enough — V8 / JavaScriptCore keep parsed module bytecode keyed by URL
+    until the URL itself changes."""
+    from starlette.responses import Response as _Resp
+    html = (_frontend_dir / "index.html").read_text(encoding="utf-8")
+    for name in _FRONTEND_ASSETS:
+        h = _asset_hash(name)
+        html = html.replace(f'src="/{name}"', f'src="/{name}?v={h}"')
+        html = html.replace(f'href="/{name}"', f'href="/{name}?v={h}"')
+        # ES-module imports use the same URL form
+        html = html.replace(f"from '/{name}'", f"from '/{name}?v={h}'")
+    return _Resp(
+        content=html,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
+
+
+# Explicit GET / and GET /index.html so the rewrite ALWAYS runs, regardless
+# of starlette's internal html=True path resolution.
+@app.get("/", include_in_schema=False)
+async def root_index():
+    return _serve_rewritten_index()
+
+
+@app.get("/index.html", include_in_schema=False)
+async def explicit_index():
+    return _serve_rewritten_index()
+
+
 class NoCacheStaticFiles(StaticFiles):
-    """StaticFiles that forces revalidation so the browser never serves
-    stale JS/CSS after we ship a fix. Critical for a local-first dev app
-    where users typically don't think to hard-refresh."""
+    """StaticFiles that forces revalidation on every static asset response."""
 
     async def get_response(self, path, scope):
         response = await super().get_response(path, scope)
-        # `no-cache` means: cache, but always revalidate before reuse.
-        # Combined with the ETag StaticFiles already sets, browser gets
-        # 304 Not Modified when unchanged, fresh bytes when changed.
         response.headers["Cache-Control"] = "no-cache, must-revalidate"
         return response
 
 
-_frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
 app.mount("/", NoCacheStaticFiles(directory=str(_frontend_dir), html=True), name="frontend")

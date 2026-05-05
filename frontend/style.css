@@ -1007,6 +1007,17 @@ html, body {
     background: rgba(224, 82, 82, 0.12);
 }
 
+.tab-ctx-item[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.tab-ctx-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 6px;
+}
+
 /* ─── Header Rename Popup ───────────────────────────────── */
 .header-rename-popup {
     background: var(--bg-secondary);
@@ -1235,6 +1246,54 @@ html, body {
 .icon-btn:hover {
     background: var(--accent) !important;
     color: #fff !important;
+}
+
+.icon-btn:disabled,
+.icon-btn[disabled] {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}
+
+.icon-btn:disabled:hover,
+.icon-btn[disabled]:hover {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* The two "✏ Col" / "✏ Row" buttons need slightly more width than icon-only */
+#sheet-actions .icon-btn {
+    width: auto !important;
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+}
+
+#sheet-actions .icon-btn-danger:hover {
+    background: #c0392b !important;
+    color: #fff !important;
+}
+
+/* Build-freshness dot — green when up-to-date, red+pulsing when stale */
+.build-status-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-left: 8px;
+    background: #2ecc71;
+    transition: background 0.2s;
+    cursor: default;
+    flex-shrink: 0;
+}
+
+.build-status-dot.stale {
+    background: #e05252;
+    cursor: pointer;
+    animation: build-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes build-dot-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(224, 82, 82, 0.55); }
+    50%      { box-shadow: 0 0 0 6px rgba(224, 82, 82, 0); }
 }
 
 /* Presence bar inside toolbar-group */

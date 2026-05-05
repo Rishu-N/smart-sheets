@@ -493,7 +493,7 @@ function handleWSMessage(event, data) {
         case 'sheet_reload':    loadSheet(data.sheet || currentSheet); break;
         case 'sheet_renamed':   handleSheetRenamed(data); break;
         case 'sheet_deleted':   handleSheetDeleted(data); break;
-        case 'sheet_protected': renderSheetTabs(); break;
+        case 'sheet_protected': renderSheetTabs(); refreshSheetActionButtons(); break;
         case 'otp_request':     showHostOTPToast(data); break;
     }
 }
@@ -927,21 +927,112 @@ function buildRowHeader(row) {
     return String(num);
 }
 
+// ─── Generic Popup Menu Factory ─────────────────────────────
+// Single source of truth for context-style popup menus. Used by sheet
+// tabs and column/row headers. Every menu auto-closes on next outside
+// click, Escape, or scroll.
+
+let _activePopupMenu = null;
+
+function createPopupMenu(x, y, items) {
+    closeActivePopupMenu();
+
+    const menu = document.createElement('div');
+    menu.className = 'tab-ctx-menu';
+    menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:99999`;
+
+    items.forEach(it => {
+        if (it === '---' || it === null) {
+            const sep = document.createElement('div');
+            sep.className = 'tab-ctx-sep';
+            menu.appendChild(sep);
+            return;
+        }
+        const btn = document.createElement('button');
+        btn.className = 'tab-ctx-item' + (it.danger ? ' tab-ctx-danger' : '');
+        btn.textContent = it.label;
+        btn.disabled = !!it.disabled;
+        btn.addEventListener('click', () => {
+            closeActivePopupMenu();
+            if (!it.disabled) it.action();
+        });
+        menu.appendChild(btn);
+    });
+
+    document.body.appendChild(menu);
+    _activePopupMenu = menu;
+
+    setTimeout(() => {
+        document.addEventListener('click', closeActivePopupMenu, { once: true, capture: true });
+        document.addEventListener('keydown', _popupMenuKey, { once: true });
+    }, 0);
+
+    // Clamp on-screen
+    requestAnimationFrame(() => {
+        const r = menu.getBoundingClientRect();
+        if (r.right > window.innerWidth) menu.style.left = `${window.innerWidth - r.width - 8}px`;
+        if (r.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - r.height - 8}px`;
+    });
+
+    return menu;
+}
+
+function closeActivePopupMenu() {
+    if (_activePopupMenu) { _activePopupMenu.remove(); _activePopupMenu = null; }
+}
+
+function _popupMenuKey(e) {
+    if (e.key === 'Escape') closeActivePopupMenu();
+}
+
 // ─── Column / Row Header Rename ─────────────────────────────
 //
-// Handsontable owns right-clicks AND double-clicks on its grid (right-click
-// opens the contextMenu, double-click opens the cell editor for the active
-// cell — neither of which lets us "rename a header" cleanly).
+// Right-click and double-click on a column/row header both open our rename
+// menu / popup. Both are intercepted at document/capture phase so HoT and
+// the browser's native menu never get a chance to react.
 //
-// Solution: a document-level dblclick listener in CAPTURE phase that
-// intercepts the event BEFORE HoT processes it. We:
-//  - check that the dblclick target is a header `<th>` inside our grid
-//  - call `e.preventDefault()` and `e.stopImmediatePropagation()` so HoT
-//    never fires its open-editor logic (this is what was breaking the
-//    layout — HoT was opening the editor for row 1 of the clicked column,
-//    which reset rowHeaders to default and shifted the grid)
-//  - resolve the column/row index from HoT's selection model (more reliable
-//    than DOM walking, which differs across HoT overlay panes)
+// Coordinate resolution: we call `hot.getCoords(target)` (HoT's own API) —
+// it returns {row, col} where row=-1 means column header, col=-1 means row
+// header. This works correctly across all of HoT's overlay panes (master,
+// top-clone, left-clone, top-left-clone), unlike a hand-rolled
+// `cellIndex - 1` which silently breaks for sticky/frozen headers.
+
+/** Resolve a click event target to a header axis+index, or null if it's
+ *  not a header inside our grid. Logs a warning when we bail so future
+ *  "rename doesn't appear" reports are diagnosable from the console. */
+function resolveHeaderCoords(target) {
+    if (!hot || !hot.rootElement) return null;
+    if (!hot.rootElement.contains(target)) return null;
+    const th = target.closest('th');
+    if (!th) return null;
+
+    let coords = null;
+    try { coords = hot.getCoords(th); } catch { /* fall through */ }
+
+    // hot.getCoords returns a CellCoords with row/col. row=-1 → column header.
+    if (coords && coords.row === -1 && coords.col >= 0) {
+        return { axis: 'col', index: coords.col };
+    }
+    if (coords && coords.col === -1 && coords.row >= 0) {
+        return { axis: 'row', index: coords.row };
+    }
+
+    // Fallbacks for environments where hot.getCoords doesn't resolve cleanly
+    // (e.g. HoT versions where the corner cell returns {row:-1, col:-1}).
+    if (th.closest('thead')) {
+        const c = th.cellIndex - 1;
+        if (c >= 0) return { axis: 'col', index: c };
+    } else {
+        const rowEl = th.closest('tr');
+        if (rowEl) {
+            const r = Array.from(rowEl.parentNode.children).indexOf(rowEl);
+            if (r >= 0) return { axis: 'row', index: r };
+        }
+    }
+
+    console.warn('[smartsheet] header click ignored — could not resolve coords', { th, coords });
+    return null;
+}
 
 let _headerDblclickBound = false;
 
@@ -950,67 +1041,22 @@ function setupHeaderDblclickRename() {
     _headerDblclickBound = true;
 
     document.addEventListener('dblclick', (e) => {
-        if (!hot || !hot.rootElement) return;
-        if (!hot.rootElement.contains(e.target)) return;
-
-        const th = e.target.closest('th');
-        if (!th) return;
-
-        const inThead = !!th.closest('thead');
-
-        // Use HoT's last hover coordinates (more robust than DOM walking
-        // because HoT renders multiple overlay tables for sticky headers).
-        const ranges = hot.getSelected();
-        let axis = null;
-        let index = null;
-
-        if (inThead) {
-            // Column header. Selection model: a column-header click selects
-            // the entire column, so range = [[0, col, lastRow, col]].
-            if (ranges && ranges.length) {
-                const [, col] = ranges[0];
-                if (col >= 0) { axis = 'col'; index = col; }
-            }
-            // Fallback: read cellIndex (− 1 for the corner cell)
-            if (axis === null) {
-                const c = th.cellIndex - 1;
-                if (c >= 0) { axis = 'col'; index = c; }
-            }
-        } else if (th.tagName === 'TH') {
-            // Row header (any <th> outside thead — works regardless of HoT's
-            // varying rowHeader class names).
-            if (ranges && ranges.length) {
-                const [r] = ranges[0];
-                if (r >= 0) { axis = 'row'; index = r; }
-            }
-            if (axis === null) {
-                const rowEl = th.closest('tr');
-                if (rowEl) {
-                    const r = Array.from(rowEl.parentNode.children).indexOf(rowEl);
-                    if (r >= 0) { axis = 'row'; index = r; }
-                }
-            }
-        }
-
-        if (axis === null) return;
+        const h = resolveHeaderCoords(e.target);
+        if (!h) return;
 
         e.preventDefault();
         e.stopImmediatePropagation();
         e.stopPropagation();
 
+        const { axis, index } = h;
         const currentAlias = axis === 'col'
             ? (columnAliases[String(index)] || '')
             : (rowAliases[String(index)] || '');
         const label = axis === 'col' ? colToLetter(index) : String(index + 1);
         showHeaderRenamePopup(e.clientX, e.clientY, axis, index, currentAlias, label);
-    }, true /* capture phase — fires before HoT's bubble-phase listener */);
+    }, true);
 }
 
-// Right-click on column/row headers: own the event entirely with a
-// document-level mousedown capture-phase listener. We DON'T integrate with
-// HoT's contextMenu here because (a) the version in use doesn't reliably
-// honour `hidden` callbacks for custom items, and (b) capture-phase always
-// beats HoT's bubble-phase listener so we can stopPropagation cleanly.
 let _headerRightClickBound = false;
 
 function setupHeaderRightClickTracking() {
@@ -1018,54 +1064,33 @@ function setupHeaderRightClickTracking() {
     _headerRightClickBound = true;
 
     document.addEventListener('mousedown', (e) => {
-        if (e.button !== 2) return;        // right-click only
-        if (!hot || !hot.rootElement) return;
-        if (!hot.rootElement.contains(e.target)) return;
+        if (e.button !== 2) return;
+        const h = resolveHeaderCoords(e.target);
+        if (!h) return;
 
-        const th = e.target.closest('th');
-        if (!th) return;                   // not a header — let HoT handle cells
-
-        let axis = null;
-        let index = null;
-
-        if (th.closest('thead')) {
-            const c = th.cellIndex - 1;    // -1 is the corner; skip
-            if (c >= 0) { axis = 'col'; index = c; }
-        } else if (th.tagName === 'TH') {
-            const rowEl = th.closest('tr');
-            if (rowEl) {
-                const r = Array.from(rowEl.parentNode.children).indexOf(rowEl);
-                if (r >= 0) { axis = 'row'; index = r; }
-            }
-        }
-        if (axis === null) return;
-
-        // We've decided to handle this. Block HoT and the browser entirely.
         e.preventDefault();
         e.stopImmediatePropagation();
         e.stopPropagation();
 
-        // contextmenu fires AFTER mousedown. Suppress it once so the browser
-        // doesn't show the native "Look Up" menu either.
-        document.addEventListener('contextmenu', (ev) => ev.preventDefault(), { once: true, capture: true });
+        // contextmenu fires AFTER mousedown — and HoT's contextMenu plugin
+        // listens for THAT event (not mousedown). preventDefault alone isn't
+        // enough; we must also stopImmediatePropagation to keep HoT's listener
+        // from running and showing its stock Insert/Delete menu under ours.
+        document.addEventListener('contextmenu', ev => {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+            ev.stopPropagation();
+        }, { once: true, capture: true });
 
-        showHeaderActionMenu(e.clientX, e.clientY, axis, index);
-    }, true /* capture phase */);
+        showHeaderActionMenu(e.clientX, e.clientY, h.axis, h.index);
+    }, true);
 }
 
-let _headerActionMenu = null;
-
 function showHeaderActionMenu(x, y, axis, index) {
-    closeHeaderActionMenu();
-
     const label = axis === 'col' ? colToLetter(index) : String(index + 1);
     const currentAlias = axis === 'col'
         ? (columnAliases[String(index)] || '')
         : (rowAliases[String(index)] || '');
-
-    const menu = document.createElement('div');
-    menu.className = 'tab-ctx-menu';
-    menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:99999`;
 
     const items = [
         {
@@ -1080,38 +1105,7 @@ function showHeaderActionMenu(x, y, axis, index) {
             action: () => commitAlias(axis, index, ''),
         });
     }
-
-    items.forEach(it => {
-        const b = document.createElement('button');
-        b.className = 'tab-ctx-item' + (it.danger ? ' tab-ctx-danger' : '');
-        b.textContent = it.label;
-        b.addEventListener('click', () => { closeHeaderActionMenu(); it.action(); });
-        menu.appendChild(b);
-    });
-
-    document.body.appendChild(menu);
-    _headerActionMenu = menu;
-
-    // Close on next outside click / Escape / scroll
-    setTimeout(() => {
-        document.addEventListener('click', closeHeaderActionMenu, { once: true, capture: true });
-        document.addEventListener('keydown', _headerActionMenuKey, { once: true });
-    }, 0);
-
-    // Clamp on screen
-    requestAnimationFrame(() => {
-        const r = menu.getBoundingClientRect();
-        if (r.right > window.innerWidth) menu.style.left = `${window.innerWidth - r.width - 8}px`;
-        if (r.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - r.height - 8}px`;
-    });
-}
-
-function _headerActionMenuKey(e) {
-    if (e.key === 'Escape') closeHeaderActionMenu();
-}
-
-function closeHeaderActionMenu() {
-    if (_headerActionMenu) { _headerActionMenu.remove(); _headerActionMenu = null; }
+    createPopupMenu(x, y, items);
 }
 
 function showHeaderRenamePopup(x, y, axis, index, currentAlias, label) {
@@ -1241,13 +1235,21 @@ async function renderSheetTabs() {
         btn.addEventListener('mousedown', e => {
             if (e.button !== 2) return;
             e.preventDefault();
+            e.stopImmediatePropagation();
             e.stopPropagation();
             showTabContextMenu(e, btn);
-            // Suppress the contextmenu that follows so the browser's native
-            // "Look Up" / "Search with Google" menu can't appear.
-            document.addEventListener('contextmenu', ev => ev.preventDefault(), { once: true, capture: true });
+            // Suppress the contextmenu that follows AND any other listener
+            // (browser's native menu, HoT, anything) — full stopImmediatePropagation.
+            document.addEventListener('contextmenu', ev => {
+                ev.preventDefault();
+                ev.stopImmediatePropagation();
+                ev.stopPropagation();
+            }, { once: true, capture: true });
         });
-        btn.addEventListener('contextmenu', e => { e.preventDefault(); });
+        btn.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        });
     });
 
     document.getElementById('add-sheet-btn').addEventListener('click', createNewSheet);
@@ -1255,40 +1257,17 @@ async function renderSheetTabs() {
 
 // ─── Sheet Tab Context Menu ──────────────────────────────────
 
-let _tabCtxMenu = null;
-
 function showTabContextMenu(e, btn) {
-    closeTabContextMenu();
     const sheetName = btn.dataset.sheet;
     const isProtected = btn.dataset.protected === '1';
-
-    const menu = document.createElement('div');
-    menu.className = 'tab-ctx-menu';
-    menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999`;
-
     const items = [
         { label: '✏️ Rename', action: () => renameSheetPrompt(sheetName, btn) },
         { label: isProtected ? '🔓 Unprotect' : '🔒 Protect', action: () => toggleProtectSheet(sheetName) },
-        ...(!isProtected ? [{ label: '🗑️ Delete', action: () => deleteSheetPrompt(sheetName), danger: true }] : []),
     ];
-
-    items.forEach(item => {
-        const el = document.createElement('button');
-        el.textContent = item.label;
-        el.className = 'tab-ctx-item' + (item.danger ? ' tab-ctx-danger' : '');
-        el.addEventListener('click', () => { closeTabContextMenu(); item.action(); });
-        menu.appendChild(el);
-    });
-
-    document.body.appendChild(menu);
-    _tabCtxMenu = menu;
-
-    // Close on next outside click
-    setTimeout(() => document.addEventListener('click', closeTabContextMenu, { once: true }), 0);
-}
-
-function closeTabContextMenu() {
-    if (_tabCtxMenu) { _tabCtxMenu.remove(); _tabCtxMenu = null; }
+    if (!isProtected) {
+        items.push({ label: '🗑️ Delete', action: () => deleteSheetPrompt(sheetName), danger: true });
+    }
+    createPopupMenu(e.clientX, e.clientY, items);
 }
 
 async function deleteSheetPrompt(sheetName) {
@@ -1522,6 +1501,7 @@ async function loadSheet(name) {
 
         updateStatusBar();
         await renderSheetTabs();
+        await refreshSheetActionButtons();
 
         const selector = document.getElementById('sheet-selector');
         if (selector) selector.value = name;
@@ -1559,6 +1539,128 @@ function setupExportButton() {
     document.getElementById('export-btn').addEventListener('click', () => {
         if (currentSheet) window.location = `/api/sheet/${encodeURIComponent(currentSheet)}/export`;
     });
+}
+
+// ─── Toolbar Sheet/Header Action Buttons ────────────────────
+// Visible counterparts to the right-click menus, so the features are
+// discoverable without anyone having to know the right-click shortcut.
+
+let _currentSheetProtected = false;
+
+function setupSheetActionButtons() {
+    document.getElementById('rename-col-btn').addEventListener('click', () => {
+        const range = hot && hot.getSelectedRangeLast();
+        if (!range) {
+            showErrorToast('Select a column first (click any cell in it).');
+            return;
+        }
+        const col = range.from.col;
+        if (col < 0) { showErrorToast('Select a column first.'); return; }
+        const currentAlias = columnAliases[String(col)] || '';
+        const label = colToLetter(col);
+        const x = (window.innerWidth - 240) / 2;
+        const y = (window.innerHeight - 160) / 2;
+        showHeaderRenamePopup(x, y, 'col', col, currentAlias, label);
+    });
+
+    document.getElementById('rename-row-btn').addEventListener('click', () => {
+        const range = hot && hot.getSelectedRangeLast();
+        if (!range) {
+            showErrorToast('Select a row first (click any cell in it).');
+            return;
+        }
+        const row = range.from.row;
+        if (row < 0) { showErrorToast('Select a row first.'); return; }
+        const currentAlias = rowAliases[String(row)] || '';
+        const label = String(row + 1);
+        const x = (window.innerWidth - 240) / 2;
+        const y = (window.innerHeight - 160) / 2;
+        showHeaderRenamePopup(x, y, 'row', row, currentAlias, label);
+    });
+
+    document.getElementById('protect-sheet-btn').addEventListener('click', () => {
+        if (!currentSheet) return;
+        toggleProtectSheet(currentSheet);
+    });
+
+    document.getElementById('delete-sheet-btn').addEventListener('click', () => {
+        if (!currentSheet) return;
+        if (_currentSheetProtected) {
+            showErrorToast(`"${currentSheet}" is protected. Unprotect it (🔒 button) first.`);
+            return;
+        }
+        deleteSheetPrompt(currentSheet);
+    });
+}
+
+/** Refresh the protect/delete button state to reflect the current sheet.
+ *  Call this after every sheet load and after every protect/unprotect. */
+async function refreshSheetActionButtons() {
+    try {
+        const sheets = await fetchSheets();
+        const cur = sheets.find(s => s.name === currentSheet);
+        _currentSheetProtected = !!(cur && cur.protected);
+        const protectBtn = document.getElementById('protect-sheet-btn');
+        const deleteBtn = document.getElementById('delete-sheet-btn');
+        if (protectBtn) {
+            protectBtn.textContent = _currentSheetProtected ? '🔓' : '🔒';
+            protectBtn.title = _currentSheetProtected
+                ? `Unprotect "${currentSheet}" (currently protected)`
+                : `Protect "${currentSheet}" from deletion`;
+        }
+        if (deleteBtn) {
+            deleteBtn.disabled = _currentSheetProtected;
+            deleteBtn.title = _currentSheetProtected
+                ? 'Cannot delete a protected sheet (unprotect first)'
+                : `Delete "${currentSheet}"`;
+        }
+    } catch (e) {
+        console.warn('[smartsheet] refreshSheetActionButtons failed:', e);
+    }
+}
+
+// ─── Build Freshness Indicator ──────────────────────────────
+// Polls /api/build-info every 30s and compares against the hashes baked
+// into this page at load. If grid.js or style.css has changed on the
+// server but this tab is still running the old code, flip the dot red.
+
+let _initialBuildHashes = null;
+
+async function setupBuildFreshnessCheck() {
+    try {
+        const r = await fetch('/api/build-info', { cache: 'no-store' });
+        if (!r.ok) return;
+        const info = await r.json();
+        _initialBuildHashes = info.asset_hashes;
+        const dot = document.getElementById('build-status-dot');
+        if (dot) {
+            dot.title = `SmartSheet build ${info.commit} — up to date`;
+            dot.dataset.commit = info.commit;
+        }
+    } catch (e) {
+        console.warn('[smartsheet] build-info fetch failed:', e);
+        return;
+    }
+
+    setInterval(async () => {
+        try {
+            const r = await fetch('/api/build-info', { cache: 'no-store' });
+            if (!r.ok) return;
+            const info = await r.json();
+            const dot = document.getElementById('build-status-dot');
+            if (!dot || !_initialBuildHashes) return;
+            const stale = Object.keys(_initialBuildHashes).some(
+                k => _initialBuildHashes[k] !== info.asset_hashes[k]
+            );
+            if (stale && !dot.classList.contains('stale')) {
+                dot.classList.remove('up-to-date');
+                dot.classList.add('stale');
+                dot.title = `New version available (${info.commit}) — click to reload`;
+                dot.onclick = () => location.reload();
+                showErrorToast('A new version was deployed — click the red dot in the toolbar to reload.');
+            }
+        } catch { /* server unreachable, leave indicator alone */ }
+    }, 30000);
 }
 
 // ─── Keyboard Shortcuts ─────────────────────────────────────
@@ -1612,6 +1714,9 @@ async function init() {
         setupKeyboardShortcuts();
         setupAddRowButton();
         setupAddColRightButton();
+        setupSheetActionButtons();
+        setupBuildFreshnessCheck();
+        await refreshSheetActionButtons();
     } catch (err) {
         console.error('Init error:', err);
         showErrorToast(`Startup error: ${err.message}`);

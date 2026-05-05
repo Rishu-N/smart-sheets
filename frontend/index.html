@@ -62,6 +62,16 @@
 
                 <div class="toolbar-divider"></div>
 
+                <!-- Sheet/header actions group -->
+                <div class="toolbar-group" id="sheet-actions">
+                    <button id="rename-col-btn"   title="Rename selected column header"        class="icon-btn">&#9998; Col</button>
+                    <button id="rename-row-btn"   title="Rename selected row header"           class="icon-btn">&#9998; Row</button>
+                    <button id="protect-sheet-btn" title="Protect / unprotect current sheet"   class="icon-btn">&#128274;</button>
+                    <button id="delete-sheet-btn"  title="Delete current sheet"                class="icon-btn icon-btn-danger">&#128465;</button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
                 <!-- Action group -->
                 <div class="toolbar-group">
                     <button id="share-btn" title="Share — show LAN URL &amp; QR code">Share</button>
@@ -75,6 +85,7 @@
                 <div class="toolbar-group">
                     <button id="theme-btn" title="Toggle light/dark mode" class="icon-btn">&#9788;</button>
                     <button id="ai-toggle-btn" title="AI Assistant">AI</button>
+                    <span id="build-status-dot" class="build-status-dot up-to-date" title="Up to date"></span>
                 </div>
             </div>
         </div>

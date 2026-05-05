@@ -15,9 +15,24 @@ A local-first, AI-powered spreadsheet that runs in your browser. Host it on your
 - **Add columns** — `+` button on the last column header OR the persistent `+` strip on the right edge of the grid appends a column
 - **Export CSV** — one-click download of the current sheet
 
+### Toolbar (visible action buttons)
+
+The top-right of the toolbar has discoverable buttons for the most common
+sheet/header actions — no need to remember any right-click shortcut:
+
+| Button | Action |
+|--------|--------|
+| ✏️ Col | Rename the column containing the current selection |
+| ✏️ Row | Rename the row containing the current selection |
+| 🔒 / 🔓 | Toggle protection on the current sheet — protected sheets can't be deleted through the UI |
+| 🗑 | Delete the current sheet (greyed out and disabled when sheet is protected) |
+| 🟢 / 🔴 dot | Build-freshness indicator — green when this tab is running the latest server code, red+pulsing when a new version was deployed (click to reload) |
+
+Right-click menus still work as a power-user shortcut — see below.
+
 ### Formatting
 - **Cell formatting** — bold (Ctrl+B), italic (Ctrl+I), background colour, text colour; persisted in `.meta.json` per sheet
-- **Custom column & row names** — **right-click** any column letter (A, B, C…) or row number (1, 2, 3…) → **✏️ Rename** → type the new name → press **Enter** or click **Save**. The header now shows `Revenue (A)` or `Q1 (1)` — your alias plus the original letter/number in brackets. Formulas (`=SUM(B2:B10)`) and `Ctrl+F` searches still use the underlying letters/numbers, so nothing breaks. Right-click → **✖ Clear name** removes the alias. Stored in `<sheet>.meta.json`.
+- **Custom column & row names** — **right-click** any column letter (A, B, C…) or row number (1, 2, 3…) → **✏️ Rename** → type the new name → press **Enter** or click **Save**. Or just **double-click** the header. Or use the toolbar **✏️ Col / ✏️ Row** buttons. The header then shows `Revenue (A)` or `Q1 (1)` — your alias plus the original letter/number in brackets. Formulas (`=SUM(B2:B10)`) and `Ctrl+F` searches still use the underlying letters/numbers, so nothing breaks. Right-click → **✖ Clear header name** removes the alias. Stored in `<sheet>.meta.json`.
 
 ### History
 - **Undo / Redo** — delta-based, 50-level history per sheet (Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z)
