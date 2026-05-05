@@ -114,7 +114,7 @@ function setupPanelEvents() {
     // Close button
     document.getElementById('ai-close-btn').addEventListener('click', togglePanel);
 
-    // Q&A
+    // Q&A — Enter sends, Shift+Enter is a newline.
     document.getElementById('ai-send-btn').addEventListener('click', sendQuery);
     document.getElementById('ai-query-input').addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -123,14 +123,38 @@ function setupPanelEvents() {
         }
     });
 
-    // Data Dump
+    // Helper: bind Cmd/Ctrl+Enter on a multi-line textarea to its action button.
+    // Plain Enter stays as a newline (these inputs are paragraphs/code).
+    const bindCmdEnter = (textareaId, action) => {
+        const el = document.getElementById(textareaId);
+        if (!el) return;
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                action();
+            }
+        });
+    };
+
+    // Data Dump — Cmd/Ctrl+Enter parses
     document.getElementById('ai-dump-btn').addEventListener('click', sendDump);
+    bindCmdEnter('ai-dump-input', sendDump);
 
-    // Column Fill
+    // Column Fill — Cmd/Ctrl+Enter generates
     document.getElementById('ai-fill-btn').addEventListener('click', sendFill);
+    bindCmdEnter('ai-fill-instruction', sendFill);
 
-    // Formula
+    // Formula — Cmd/Ctrl+Enter generates from the description. Single-line
+    // target-cell input also submits on plain Enter so a quick "B5" + Enter
+    // → generate flow works.
     document.getElementById('ai-formula-btn').addEventListener('click', sendFormula);
+    bindCmdEnter('ai-formula-desc', sendFormula);
+    const formulaCellEl = document.getElementById('ai-formula-cell');
+    if (formulaCellEl) {
+        formulaCellEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); sendFormula(); }
+        });
+    }
 
     // Confirm / Cancel
     document.getElementById('ai-confirm-btn').addEventListener('click', confirmResult);

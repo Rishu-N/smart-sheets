@@ -372,6 +372,21 @@ function setupSettingsModal() {
         if (e.target.id === 'settings-modal') closeSettingsModal();
     });
     document.getElementById('settings-save-btn').addEventListener('click', saveSettings);
+
+    // Enter inside any settings input → Save. Escape → Cancel. Skip
+    // textareas (where Enter is a newline) and selects (Enter opens dropdown).
+    const modal = document.getElementById('settings-modal');
+    modal.addEventListener('keydown', (e) => {
+        if (modal.style.display === 'none') return;
+        const tag = (e.target && e.target.tagName) || '';
+        if (e.key === 'Enter' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+            e.preventDefault();
+            saveSettings();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeSettingsModal();
+        }
+    });
 }
 
 async function openSettingsModal() {
@@ -651,6 +666,17 @@ function setupSearchPanel() {
 
     document.getElementById('search-replace-one-btn').addEventListener('click', replaceOne);
     document.getElementById('search-replace-all-btn').addEventListener('click', replaceAll);
+
+    // Enter in the replace field → replace next match. Shift+Enter → replace all.
+    document.getElementById('search-replace-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.shiftKey) replaceAll();
+            else replaceOne();
+        } else if (e.key === 'Escape') {
+            closeSearchPanel();
+        }
+    });
 }
 
 function openSearchPanel(withReplace = false) {
