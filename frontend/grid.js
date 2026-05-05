@@ -927,88 +927,191 @@ function buildRowHeader(row) {
     return String(num);
 }
 
-// ─── Column / Row Header Right-Click Rename ─────────────────
+// ─── Column / Row Header Rename ─────────────────────────────
 //
-// Handsontable's contextMenu plugin intercepts right-clicks in BUBBLE phase,
-// so we listen on `document` in CAPTURE phase to intercept first. We then
-// stopImmediatePropagation so HoT never sees the event when the click is
-// on a column/row header.
-let _headerCtxBound = false;
+// Handsontable owns right-clicks AND double-clicks on its grid (right-click
+// opens the contextMenu, double-click opens the cell editor for the active
+// cell — neither of which lets us "rename a header" cleanly).
+//
+// Solution: a document-level dblclick listener in CAPTURE phase that
+// intercepts the event BEFORE HoT processes it. We:
+//  - check that the dblclick target is a header `<th>` inside our grid
+//  - call `e.preventDefault()` and `e.stopImmediatePropagation()` so HoT
+//    never fires its open-editor logic (this is what was breaking the
+//    layout — HoT was opening the editor for row 1 of the clicked column,
+//    which reset rowHeaders to default and shifted the grid)
+//  - resolve the column/row index from HoT's selection model (more reliable
+//    than DOM walking, which differs across HoT overlay panes)
 
-function setupHeaderAliasEditing() {
-    if (_headerCtxBound) return;
-    _headerCtxBound = true;
+let _headerDblclickBound = false;
 
-    document.addEventListener('contextmenu', (e) => {
-        if (!hot) return;
-        // Only intercept clicks inside the grid
-        if (!hot.rootElement || !hot.rootElement.contains(e.target)) return;
+function setupHeaderDblclickRename() {
+    if (_headerDblclickBound) return;
+    _headerDblclickBound = true;
+
+    document.addEventListener('dblclick', (e) => {
+        if (!hot || !hot.rootElement) return;
+        if (!hot.rootElement.contains(e.target)) return;
 
         const th = e.target.closest('th');
         if (!th) return;
 
         const inThead = !!th.closest('thead');
 
+        // Use HoT's last hover coordinates (more robust than DOM walking
+        // because HoT renders multiple overlay tables for sticky headers).
+        const ranges = hot.getSelected();
+        let axis = null;
+        let index = null;
+
         if (inThead) {
-            // Column header — cellIndex 0 is the corner; skip it.
-            const col = th.cellIndex - 1;
-            if (col < 0) return;
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            showHeaderCtxMenu(e, 'col', col);
+            // Column header. Selection model: a column-header click selects
+            // the entire column, so range = [[0, col, lastRow, col]].
+            if (ranges && ranges.length) {
+                const [, col] = ranges[0];
+                if (col >= 0) { axis = 'col'; index = col; }
+            }
+            // Fallback: read cellIndex (− 1 for the corner cell)
+            if (axis === null) {
+                const c = th.cellIndex - 1;
+                if (c >= 0) { axis = 'col'; index = c; }
+            }
         } else if (th.tagName === 'TH') {
-            // Row header (any <th> outside thead). Try class first, fall back
-            // to "any non-thead th" since HoT's class names vary by version.
-            const rowEl = th.closest('tr');
-            if (!rowEl) return;
-            const row = Array.from(rowEl.parentNode.children).indexOf(rowEl);
-            if (row < 0) return;
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            showHeaderCtxMenu(e, 'row', row);
+            // Row header (any <th> outside thead — works regardless of HoT's
+            // varying rowHeader class names).
+            if (ranges && ranges.length) {
+                const [r] = ranges[0];
+                if (r >= 0) { axis = 'row'; index = r; }
+            }
+            if (axis === null) {
+                const rowEl = th.closest('tr');
+                if (rowEl) {
+                    const r = Array.from(rowEl.parentNode.children).indexOf(rowEl);
+                    if (r >= 0) { axis = 'row'; index = r; }
+                }
+            }
         }
-    }, true /* capture phase — fires BEFORE Handsontable's bubble-phase listener */);
+
+        if (axis === null) return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+
+        const currentAlias = axis === 'col'
+            ? (columnAliases[String(index)] || '')
+            : (rowAliases[String(index)] || '');
+        const label = axis === 'col' ? colToLetter(index) : String(index + 1);
+        showHeaderRenamePopup(e.clientX, e.clientY, axis, index, currentAlias, label);
+    }, true /* capture phase — fires before HoT's bubble-phase listener */);
 }
 
-let _headerCtxMenu = null;
+// Right-click on column/row headers: own the event entirely with a
+// document-level mousedown capture-phase listener. We DON'T integrate with
+// HoT's contextMenu here because (a) the version in use doesn't reliably
+// honour `hidden` callbacks for custom items, and (b) capture-phase always
+// beats HoT's bubble-phase listener so we can stopPropagation cleanly.
+let _headerRightClickBound = false;
 
-function showHeaderCtxMenu(e, axis, index) {
-    closeHeaderCtxMenu();
+function setupHeaderRightClickTracking() {
+    if (_headerRightClickBound) return;
+    _headerRightClickBound = true;
+
+    document.addEventListener('mousedown', (e) => {
+        if (e.button !== 2) return;        // right-click only
+        if (!hot || !hot.rootElement) return;
+        if (!hot.rootElement.contains(e.target)) return;
+
+        const th = e.target.closest('th');
+        if (!th) return;                   // not a header — let HoT handle cells
+
+        let axis = null;
+        let index = null;
+
+        if (th.closest('thead')) {
+            const c = th.cellIndex - 1;    // -1 is the corner; skip
+            if (c >= 0) { axis = 'col'; index = c; }
+        } else if (th.tagName === 'TH') {
+            const rowEl = th.closest('tr');
+            if (rowEl) {
+                const r = Array.from(rowEl.parentNode.children).indexOf(rowEl);
+                if (r >= 0) { axis = 'row'; index = r; }
+            }
+        }
+        if (axis === null) return;
+
+        // We've decided to handle this. Block HoT and the browser entirely.
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+
+        // contextmenu fires AFTER mousedown. Suppress it once so the browser
+        // doesn't show the native "Look Up" menu either.
+        document.addEventListener('contextmenu', (ev) => ev.preventDefault(), { once: true, capture: true });
+
+        showHeaderActionMenu(e.clientX, e.clientY, axis, index);
+    }, true /* capture phase */);
+}
+
+let _headerActionMenu = null;
+
+function showHeaderActionMenu(x, y, axis, index) {
+    closeHeaderActionMenu();
+
     const label = axis === 'col' ? colToLetter(index) : String(index + 1);
-    const currentAlias = axis === 'col' ? (columnAliases[String(index)] || '') : (rowAliases[String(index)] || '');
-    const axisLabel = axis === 'col' ? `column ${label}` : `row ${label}`;
+    const currentAlias = axis === 'col'
+        ? (columnAliases[String(index)] || '')
+        : (rowAliases[String(index)] || '');
 
     const menu = document.createElement('div');
     menu.className = 'tab-ctx-menu';
-    menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999`;
+    menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:99999`;
 
-    const renameBtn = document.createElement('button');
-    renameBtn.className = 'tab-ctx-item';
-    renameBtn.textContent = `✏️ Rename ${axisLabel}`;
-    renameBtn.addEventListener('click', () => {
-        closeHeaderCtxMenu();
-        showHeaderRenamePopup(e.clientX, e.clientY, axis, index, currentAlias, label);
-    });
-    menu.appendChild(renameBtn);
-
+    const items = [
+        {
+            label: `✏️ Rename ${axis === 'col' ? `column ${label}` : `row ${label}`}`,
+            action: () => showHeaderRenamePopup(x, y, axis, index, currentAlias, label),
+        },
+    ];
     if (currentAlias) {
-        const clearBtn = document.createElement('button');
-        clearBtn.className = 'tab-ctx-item tab-ctx-danger';
-        clearBtn.textContent = `✖ Clear name`;
-        clearBtn.addEventListener('click', async () => {
-            closeHeaderCtxMenu();
-            await commitAlias(axis, index, '');
+        items.push({
+            label: '✖ Clear header name',
+            danger: true,
+            action: () => commitAlias(axis, index, ''),
         });
-        menu.appendChild(clearBtn);
     }
 
+    items.forEach(it => {
+        const b = document.createElement('button');
+        b.className = 'tab-ctx-item' + (it.danger ? ' tab-ctx-danger' : '');
+        b.textContent = it.label;
+        b.addEventListener('click', () => { closeHeaderActionMenu(); it.action(); });
+        menu.appendChild(b);
+    });
+
     document.body.appendChild(menu);
-    _headerCtxMenu = menu;
-    setTimeout(() => document.addEventListener('click', closeHeaderCtxMenu, { once: true }), 0);
+    _headerActionMenu = menu;
+
+    // Close on next outside click / Escape / scroll
+    setTimeout(() => {
+        document.addEventListener('click', closeHeaderActionMenu, { once: true, capture: true });
+        document.addEventListener('keydown', _headerActionMenuKey, { once: true });
+    }, 0);
+
+    // Clamp on screen
+    requestAnimationFrame(() => {
+        const r = menu.getBoundingClientRect();
+        if (r.right > window.innerWidth) menu.style.left = `${window.innerWidth - r.width - 8}px`;
+        if (r.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - r.height - 8}px`;
+    });
 }
 
-function closeHeaderCtxMenu() {
-    if (_headerCtxMenu) { _headerCtxMenu.remove(); _headerCtxMenu = null; }
+function _headerActionMenuKey(e) {
+    if (e.key === 'Escape') closeHeaderActionMenu();
+}
+
+function closeHeaderActionMenu() {
+    if (_headerActionMenu) { _headerActionMenu.remove(); _headerActionMenu = null; }
 }
 
 function showHeaderRenamePopup(x, y, axis, index, currentAlias, label) {
@@ -1132,7 +1235,19 @@ async function renderSheetTabs() {
     tabs.querySelectorAll('.sheet-tab:not(.sheet-tab-add)').forEach(btn => {
         btn.addEventListener('click', () => loadSheet(btn.dataset.sheet));
         btn.addEventListener('dblclick', () => renameSheetPrompt(btn.dataset.sheet, btn));
-        btn.addEventListener('contextmenu', e => { e.preventDefault(); showTabContextMenu(e, btn); });
+        // Belt + braces for Mac trackpad two-finger-tap, which on macOS Safari
+        // can race the browser's text-selection menu unless we kill BOTH events:
+        // the mousedown (button=2) AND the contextmenu (which fires after).
+        btn.addEventListener('mousedown', e => {
+            if (e.button !== 2) return;
+            e.preventDefault();
+            e.stopPropagation();
+            showTabContextMenu(e, btn);
+            // Suppress the contextmenu that follows so the browser's native
+            // "Look Up" / "Search with Google" menu can't appear.
+            document.addEventListener('contextmenu', ev => ev.preventDefault(), { once: true, capture: true });
+        });
+        btn.addEventListener('contextmenu', e => { e.preventDefault(); });
     });
 
     document.getElementById('add-sheet-btn').addEventListener('click', createNewSheet);
@@ -1268,6 +1383,10 @@ function initGrid(containerId, headers, data) {
 
         renderer: cellFormatRenderer,
 
+        // Note: header right-clicks NEVER reach HoT's contextMenu — they're
+        // intercepted by setupHeaderRightClickTracking() at document/mousedown
+        // capture phase, which shows our own ✏️ Rename / ✖ Clear menu and
+        // stopPropagation()'s the event. So this config only sees CELL clicks.
         contextMenu: {
             items: {
                 'row_above': { name: 'Insert row above' },
@@ -1281,6 +1400,10 @@ function initGrid(containerId, headers, data) {
                 'redo_action': { name: 'Redo', callback: () => handleRedo() },
             },
         },
+
+        // Header right-click tracking is done via document-level mousedown
+        // capture-phase listener (setupHeaderRightClickTracking) — more
+        // reliable than HoT's beforeOnCellMouseDown for header coordinates.
 
         afterChange: (changes, source) => {
             if (!changes || source === 'loadData' || source === 'remote' || isSyncing) return;
@@ -1352,7 +1475,10 @@ function initGrid(containerId, headers, data) {
         },
     });
 
-    setupHeaderAliasEditing();
+    // Header rename: dblclick + right-click both intercepted at document/
+    // capture phase before HoT can react. Both show showHeaderRenamePopup().
+    setupHeaderDblclickRename();
+    setupHeaderRightClickTracking();
 
     // Trigger a re-render so afterGetColHeader fires with hot assigned (the + button)
     setTimeout(() => { if (hot) hot.render(); }, 0);

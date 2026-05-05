@@ -142,6 +142,21 @@ html, body {
     font-size: 12px;
     color: var(--text-secondary);
     min-height: 26px;
+    gap: 16px;
+}
+
+.status-hints {
+    flex: 1;
+    text-align: center;
+    opacity: 0.78;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-hints .hint b {
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 /* ─── Auth Screens ───────────────────────────────────────── */
@@ -291,6 +306,10 @@ html, body {
     background: var(--bg-secondary) !important;
     color: var(--text-secondary) !important;
     font-weight: 600;
+    /* Same reason as .sheet-tab — without this, two-finger-tap on a Mac
+       trackpad shows the browser's "Look Up X" menu instead of our menu. */
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .handsontable .ht__highlight,
@@ -916,6 +935,11 @@ html, body {
     cursor: pointer;
     white-space: nowrap;
     margin-right: -1px;
+    /* Prevent macOS Safari/Chrome from showing the browser's text selection
+       context menu ("Look Up", "Search with Google") when two-finger-tapping
+       a tab — they treat selectable text as eligible for the native menu. */
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .sheet-tab:hover {

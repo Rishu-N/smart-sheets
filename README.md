@@ -156,7 +156,14 @@ The app also reads `OPENAI_API_KEY` from a `.env` file in the project root or `b
 
 ## Renaming Column and Row Headers
 
-**Right-click any column letter (A, B, C…) or row number (1, 2, 3…)** → click **✏️ Rename column A** / **Rename row 1** → type your label → press **Enter** or click **Save**.
+You have two ways to rename a header — both work the same way and work with **Mac trackpad two-finger-click** as well as a regular mouse right-click:
+
+- **Double-click the header** (column letter A, B, C… or row number 1, 2, 3…) — the rename popup opens immediately. Type → Enter.
+- **Right-click / two-finger-click the header** — a small ✏️ **Rename column A** / **Rename row 1** menu pops up. Click it. If the header already has an alias, you also get **✖ Clear header name**.
+
+There's a hint in the bottom status bar reminding you about both shortcuts so the feature stays discoverable.
+
+Implementation note: header right-click is intercepted at `document` mousedown capture-phase before Handsontable's contextmenu plugin (and the browser's native "Look Up X" menu on macOS) get to react, so the menu is reliably ours. Sheet tabs and HoT headers also have `user-select: none` to keep the browser from treating them as selectable text.
 
 The header then shows your alias with the original identifier in brackets:
 
@@ -169,7 +176,7 @@ The brackets matter — they keep the original letter/number visible so:
 - `Ctrl+F` and the cell-reference jump box still understand `B2`, `A1:C5`, etc.
 - The CSV columns are never renamed on disk.
 
-To remove an alias, right-click the same header again → **✖ Clear name**. Aliases live in `<sheet>.meta.json` next to cell formatting.
+To remove an alias, right-click the same header again → **✖ Clear header name**. Aliases live in `<sheet>.meta.json` next to cell formatting.
 
 ---
 
