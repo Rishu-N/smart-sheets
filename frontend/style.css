@@ -1019,16 +1019,51 @@ html, body {
 }
 
 /* ─── Header Rename Popup ───────────────────────────────── */
+
+/* Modal backdrop — blocks all clicks so they can't reach cells under the
+   popup, and dims the spreadsheet so it's obvious the rename is its own
+   thing rather than a cell edit. */
+.header-rename-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.42);
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: hrp-fade-in 0.12s ease-out;
+}
+
+@keyframes hrp-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 .header-rename-popup {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
-    padding: 14px 16px 12px;
-    min-width: 220px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    padding: 18px 20px 14px;
+    min-width: 320px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    z-index: 99999;
+}
+
+/* Centered (modal) variant — overrides the older click-position default. */
+.header-rename-popup-centered {
+    position: relative;
+    left: auto;
+    top: auto;
+}
+
+.hrp-helper {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    margin-top: -4px;
 }
 
 .hrp-title {

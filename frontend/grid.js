@@ -1108,15 +1108,25 @@ function showHeaderActionMenu(x, y, axis, index) {
     createPopupMenu(x, y, items);
 }
 
-function showHeaderRenamePopup(x, y, axis, index, currentAlias, label) {
-    // Remove any leftover popup
-    const old = document.getElementById('header-rename-popup');
-    if (old) old.remove();
+function showHeaderRenamePopup(_x, _y, axis, index, currentAlias, label) {
+    // Always center on screen with a backdrop. The previous "open at click
+    // coords" approach landed the popup directly on top of cell B1 (HoT made
+    // it the active cell when the user right-clicked column B), so when the
+    // popup didn't grab focus reliably the user's typing went into B1.
+
+    // Clear any leftovers
+    const oldBd = document.getElementById('header-rename-backdrop');
+    if (oldBd) oldBd.remove();
+
+    // Backdrop — blocks clicks from reaching the grid behind us, and gives
+    // an obvious "you are in a modal" visual cue.
+    const backdrop = document.createElement('div');
+    backdrop.id = 'header-rename-backdrop';
+    backdrop.className = 'header-rename-backdrop';
 
     const popup = document.createElement('div');
     popup.id = 'header-rename-popup';
-    popup.className = 'header-rename-popup';
-    popup.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:9999`;
+    popup.className = 'header-rename-popup header-rename-popup-centered';
 
     const axisLabel = axis === 'col' ? `Column ${label}` : `Row ${label}`;
     popup.innerHTML = `<div class="hrp-title">Rename ${axisLabel}</div>`;
@@ -1124,45 +1134,66 @@ function showHeaderRenamePopup(x, y, axis, index, currentAlias, label) {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = currentAlias;
-    input.placeholder = `e.g. Revenue`;
+    input.placeholder = axis === 'col' ? 'e.g. Revenue' : 'e.g. Q1 Total';
     input.className = 'hrp-input';
     popup.appendChild(input);
 
-    const row = document.createElement('div');
-    row.className = 'hrp-btns';
+    const helper = document.createElement('div');
+    helper.className = 'hrp-helper';
+    helper.textContent = `Header will show as “${input.value || '<your name>'} (${label})”`;
+    popup.appendChild(helper);
+
+    input.addEventListener('input', () => {
+        helper.textContent = `Header will show as “${input.value || '<your name>'} (${label})”`;
+    });
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'hrp-btns';
 
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Save';
     saveBtn.className = 'hrp-save';
     saveBtn.addEventListener('click', async () => {
-        popup.remove();
-        await commitAlias(axis, index, input.value.trim());
+        const v = input.value.trim();
+        backdrop.remove();
+        await commitAlias(axis, index, v);
     });
 
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
     cancelBtn.className = 'hrp-cancel';
-    cancelBtn.addEventListener('click', () => popup.remove());
+    cancelBtn.addEventListener('click', () => backdrop.remove());
 
-    row.appendChild(saveBtn);
-    row.appendChild(cancelBtn);
-    popup.appendChild(row);
-    document.body.appendChild(popup);
+    btnRow.appendChild(saveBtn);
+    btnRow.appendChild(cancelBtn);
+    popup.appendChild(btnRow);
+    backdrop.appendChild(popup);
+    document.body.appendChild(backdrop);
 
-    input.focus();
-    input.select();
+    // Click on backdrop (outside popup) → cancel
+    backdrop.addEventListener('mousedown', (e) => {
+        if (e.target === backdrop) backdrop.remove();
+    });
+
+    // STOP keys from bubbling to HoT — otherwise Enter would also start
+    // editing cell B1 the moment we close the popup.
+    popup.addEventListener('keydown', (e) => e.stopPropagation(), true);
 
     input.addEventListener('keydown', async (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); popup.remove(); await commitAlias(axis, index, input.value.trim()); }
-        else if (e.key === 'Escape') { popup.remove(); }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const v = input.value.trim();
+            backdrop.remove();
+            await commitAlias(axis, index, v);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            backdrop.remove();
+        }
     });
 
-    // Clamp so it stays on screen
-    requestAnimationFrame(() => {
-        const r = popup.getBoundingClientRect();
-        if (r.right > window.innerWidth) popup.style.left = `${window.innerWidth - r.width - 8}px`;
-        if (r.bottom > window.innerHeight) popup.style.top = `${window.innerHeight - r.height - 8}px`;
-    });
+    // Defer focus by one frame so any tail-end click event from the menu
+    // doesn't steal it back.
+    requestAnimationFrame(() => { input.focus(); input.select(); });
 }
 
 async function commitAlias(axis, index, label) {
@@ -1173,13 +1204,25 @@ async function commitAlias(axis, index, label) {
         if (label) rowAliases[String(index)] = label;
         else delete rowAliases[String(index)];
     }
-    await apiUpdateAlias(currentSheet, axis, index, label);
-    // Always refresh BOTH headers to avoid layout reset
-    hot.updateSettings({
-        colHeaders: (col) => buildColHeader(col),
-        rowHeaders: (row) => buildRowHeader(row),
-    });
-    hot.render();
+    try {
+        await apiUpdateAlias(currentSheet, axis, index, label);
+    } catch (err) {
+        showErrorToast(`Rename failed: ${err.message}`);
+        return;
+    }
+    // Forcing both colHeaders and rowHeaders to be re-set guarantees HoT
+    // re-evaluates the header render functions and we don't end up with
+    // (rare) stale headers from the previous render.
+    if (hot) {
+        hot.updateSettings({
+            colHeaders: (col) => buildColHeader(col),
+            rowHeaders: (row) => buildRowHeader(row),
+        });
+        hot.render();
+    }
+    const where = axis === 'col' ? `column ${colToLetter(index)}` : `row ${index + 1}`;
+    if (label) showSuccessToast(`Renamed ${where} to "${label}"`);
+    else showSuccessToast(`Cleared name on ${where}`);
 }
 
 // ─── Add Row / Column Buttons ───────────────────────────────
